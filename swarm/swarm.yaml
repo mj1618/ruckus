@@ -8,13 +8,13 @@ tasks:
       Note that whatever task file you create - it must be small enough to fit into a single agents context window of about 100k tokens.
 
       1. Review Improvement Opportunities
-         - Examine swarm/PLAN.md and the swarm/todo files and the codebase for potential improvements, such as a new feature.
+         - Examine swarm/PLAN.md and the swarm/done/ files and the codebase for potential improvements, such as a new feature.
 
       2. If No Improvements Are Found
          - Propose an original, highly useful feature for agents working on the project.
 
       3. Write a Feature Plan
-         - Plan the improvement or feature and save the tasks to ./swarm/todo/{incremental-number}-{task-name}.todo.md.
+         - Plan the improvement or feature and save the tasks to {SWARM_STATE_DIR}/{YYYY-MM-DD-HH-MM-SS}-{task-name}.plan.md
          - Make sure the tasks are small enough to fit into a single agents context window of about 100k tokens.
          - You may need to break down the feature into smaller tasks and create multiple task files if it is too large. Or if it is a relatively small feature, you can just write the task in a single file.
 
@@ -26,11 +26,11 @@ tasks:
       # Task Workflow for the Coder Agent
 
       1. **Resume Unfinished Work**
-         - Check for your own unfinished tasks: look for files matching `./swarm/todo/*.{SWARM_TASK_ID}.processing.md`.
+         - Check for your own unfinished tasks: look for files matching `{SWARM_STATE_DIR}/*.{SWARM_TASK_ID}.processing.md`.
          - If you find such a task, skip ahead to "Implement the Task".
 
       2. **Claim a Todo Task**
-         - Search `./swarm/todo/` for files ending in `.todo.md`.
+         - Search `{SWARM_STATE_DIR}/` for files ending in `.todo.md`.
          - Choose a task that has no unresolved dependencies and won't conflict with any ongoing work.
          - Claim it by renaming it to `. {SWARM_TASK_ID}.processing.md`.
          - If no suitable todo tasks are available, skip to "If Nothing To Do".
@@ -93,5 +93,5 @@ tasks:
 pipelines:
   development:
     iterations: 100
-    parallelism: 1
+    parallelism: 5
     tasks: [planner, coder, tester, checker]
