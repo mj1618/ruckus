@@ -71,7 +71,7 @@ export function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
   return (
     <div
       ref={ref}
-      className="fixed z-50 grid grid-cols-8 gap-0.5 rounded-lg border border-zinc-700 bg-zinc-800 p-2 shadow-xl"
+      className="fixed z-50 grid grid-cols-8 gap-0.5 rounded-lg border border-border bg-overlay p-2 shadow-xl"
       style={{
         width: `${PICKER_WIDTH}px`,
         ...(pos ? { top: `${pos.top}px`, left: `${pos.left}px` } : { visibility: "hidden" as const }),
@@ -81,7 +81,7 @@ export function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
         <button
           key={emoji}
           type="button"
-          className="cursor-pointer rounded p-1.5 text-lg hover:bg-zinc-700"
+          className="cursor-pointer rounded p-1.5 text-lg hover:bg-active"
           onClick={() => {
             onSelect(emoji);
             onClose();

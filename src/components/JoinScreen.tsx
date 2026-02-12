@@ -40,18 +40,18 @@ export function JoinScreen() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-950">
+    <div className="flex min-h-screen items-center justify-center bg-base">
       <form
         onSubmit={handleSubmit}
         className="flex w-full max-w-sm flex-col items-center gap-6 px-4"
       >
-        <h1 className="text-5xl font-bold text-zinc-100">Ruckus</h1>
-        <p className="text-zinc-400">
+        <h1 className="text-5xl font-bold text-text">Ruckus</h1>
+        <p className="text-text-muted">
           Jump in. Pick a name. Start talking.
         </p>
 
         <div
-          className="flex h-16 w-16 items-center justify-center rounded-full text-2xl font-bold text-white transition-colors"
+          className="flex h-16 w-16 items-center justify-center rounded-full text-2xl font-bold text-white shadow-lg transition-colors"
           style={{ backgroundColor: avatarColor }}
         >
           {firstLetter}
@@ -67,17 +67,17 @@ export function JoinScreen() {
           placeholder="Enter your name..."
           maxLength={30}
           autoFocus
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-zinc-100 placeholder-zinc-500 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+          className="w-full rounded-lg border border-border bg-overlay px-4 py-3 text-text placeholder-text-muted outline-none focus:border-accent focus:ring-1 focus:ring-accent"
         />
 
         {error && (
-          <p className="text-sm text-red-400">{error}</p>
+          <p className="text-sm text-danger">{error}</p>
         )}
 
         <button
           type="submit"
           disabled={isSubmitting || !trimmed}
-          className="w-full rounded-lg bg-indigo-500 px-4 py-3 font-semibold text-white transition-colors hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full rounded-lg bg-accent px-4 py-3 font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting ? "Joining..." : "Join"}
         </button>

@@ -25,7 +25,7 @@ function highlightText(text: string, query: string): React.ReactNode {
     i % 2 === 1 ? (
       <mark
         key={i}
-        className="rounded bg-yellow-500/30 px-0.5 text-yellow-200"
+        className="rounded bg-warning/30 px-0.5 text-warning"
       >
         {part}
       </mark>
@@ -145,17 +145,17 @@ export function SearchPalette({
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]">
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/60" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/70" onClick={onClose} />
 
       {/* Modal */}
       <div
-        className="relative z-10 w-full max-w-lg rounded-lg border border-zinc-700 bg-zinc-900 shadow-2xl"
+        className="relative z-10 w-full max-w-lg rounded-lg border border-border bg-surface shadow-2xl"
         onKeyDown={handleKeyDown}
       >
         {/* Search input */}
-        <div className="flex items-center border-b border-zinc-700 px-4">
+        <div className="flex items-center border-b border-border px-4">
           <svg
-            className="mr-2 h-4 w-4 shrink-0 text-zinc-500"
+            className="mr-2 h-4 w-4 shrink-0 text-text-muted"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -177,21 +177,21 @@ export function SearchPalette({
                 ? "Search channels..."
                 : "Search messages..."
             }
-            className="w-full bg-transparent py-3 text-sm text-zinc-100 placeholder-zinc-500 outline-none"
+            className="w-full bg-transparent py-3 text-sm text-text placeholder-text-muted outline-none"
           />
-          <span className="ml-2 shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-500">
+          <span className="ml-2 shrink-0 rounded border border-border px-1.5 py-0.5 text-[10px] text-text-muted">
             ⌘K
           </span>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-zinc-700">
+        <div className="flex border-b border-border">
           <button
             onClick={() => setActiveTab("channels")}
             className={`flex-1 px-4 py-2 text-xs font-medium ${
               activeTab === "channels"
-                ? "border-b-2 border-indigo-500 text-indigo-400"
-                : "text-zinc-500 hover:text-zinc-300"
+                ? "border-b-2 border-accent text-accent"
+                : "text-text-muted hover:text-text-secondary"
             }`}
           >
             Channels
@@ -200,8 +200,8 @@ export function SearchPalette({
             onClick={() => setActiveTab("messages")}
             className={`flex-1 px-4 py-2 text-xs font-medium ${
               activeTab === "messages"
-                ? "border-b-2 border-indigo-500 text-indigo-400"
-                : "text-zinc-500 hover:text-zinc-300"
+                ? "border-b-2 border-accent text-accent"
+                : "text-text-muted hover:text-text-secondary"
             }`}
           >
             Messages
@@ -221,31 +221,31 @@ export function SearchPalette({
                   }}
                   className={`flex w-full items-center px-4 py-2 text-left text-sm ${
                     i === selectedIndex
-                      ? "bg-zinc-800 text-zinc-100"
-                      : "text-zinc-300 hover:bg-zinc-800/50"
+                      ? "bg-selected text-text"
+                      : "text-text-secondary hover:bg-hover"
                   }`}
                 >
-                  <span className="mr-2 text-zinc-500">#</span>
+                  <span className="mr-2 text-text-muted">#</span>
                   {query
                     ? highlightText(channel.name, query)
                     : channel.name}
                 </button>
               ))
             ) : (
-              <div className="px-4 py-8 text-center text-sm text-zinc-500">
+              <div className="px-4 py-8 text-center text-sm text-text-muted">
                 No channels found
               </div>
             )
           ) : debouncedQuery.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-zinc-500">
+            <div className="px-4 py-8 text-center text-sm text-text-muted">
               Type to search messages across all channels
             </div>
           ) : searchResults === undefined ? (
-            <div className="px-4 py-8 text-center text-sm text-zinc-500">
+            <div className="px-4 py-8 text-center text-sm text-text-muted">
               Searching...
             </div>
           ) : searchResults.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-zinc-500">
+            <div className="px-4 py-8 text-center text-sm text-text-muted">
               No messages match your search
             </div>
           ) : (
@@ -258,27 +258,27 @@ export function SearchPalette({
                 }}
                 className={`w-full px-4 py-2.5 text-left ${
                   i === selectedIndex
-                    ? "bg-zinc-800"
-                    : "hover:bg-zinc-800/50"
+                    ? "bg-selected"
+                    : "hover:bg-hover"
                 }`}
               >
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="font-medium text-zinc-400">
+                  <span className="font-medium text-text-muted">
                     #{result.channelName}
                   </span>
-                  <span className="text-zinc-600">·</span>
+                  <span className="text-text-faint">·</span>
                   <span
                     className="font-medium"
                     style={{ color: result.avatarColor }}
                   >
                     {result.username}
                   </span>
-                  <span className="text-zinc-600">·</span>
-                  <span className="text-zinc-600">
+                  <span className="text-text-faint">·</span>
+                  <span className="text-text-faint">
                     {formatTime(result._creationTime)}
                   </span>
                 </div>
-                <div className="mt-0.5 text-sm text-zinc-300">
+                <div className="mt-0.5 text-sm text-text-secondary">
                   {highlightText(result.text, debouncedQuery)}
                 </div>
               </button>
@@ -287,7 +287,7 @@ export function SearchPalette({
         </div>
 
         {/* Footer hint */}
-        <div className="flex gap-3 border-t border-zinc-700 px-4 py-2 text-[10px] text-zinc-600">
+        <div className="flex gap-3 border-t border-border px-4 py-2 text-[10px] text-text-faint">
           <span>↑↓ Navigate</span>
           <span>↵ Select</span>
           <span>Tab Switch tabs</span>

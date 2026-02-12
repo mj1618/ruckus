@@ -1,8 +1,273 @@
 @import "tailwindcss";
 
+/* Discord/Slack-inspired dark theme palette */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Backgrounds - rich charcoal tones instead of pure gray */
+  --bg-base: #1e1f22;
+  --bg-primary: #2b2d31;
+  --bg-secondary: #313338;
+  --bg-tertiary: #383a40;
+  --bg-modifier-hover: #35373c;
+  --bg-modifier-active: #3f4147;
+  --bg-modifier-selected: #43444b;
+  
+  /* Accent colors - Discord blurple with variations */
+  --accent-primary: #5865f2;
+  --accent-primary-hover: #4752c4;
+  --accent-primary-active: #3c45a5;
+  --accent-secondary: #7289da;
+  --accent-soft: rgba(88, 101, 242, 0.15);
+  --accent-soft-hover: rgba(88, 101, 242, 0.25);
+  
+  /* Text hierarchy */
+  --text-primary: #f2f3f5;
+  --text-secondary: #b5bac1;
+  --text-muted: #949ba4;
+  --text-faint: #6d6f78;
+  --text-link: #00a8fc;
+  
+  /* Borders */
+  --border-subtle: #3f4147;
+  --border-strong: #4e5058;
+  
+  /* Status colors */
+  --status-online: #23a55a;
+  --status-idle: #f0b232;
+  --status-dnd: #f23f43;
+  --status-offline: #80848e;
+  
+  /* Semantic colors */
+  --success: #23a55a;
+  --warning: #f0b232;
+  --danger: #f23f43;
+  --info: #00a8fc;
+  
+  /* Pin/bookmark accent */
+  --pin-color: #f0b232;
+  --bookmark-color: #5865f2;
+  
+  /* Message specific */
+  --message-hover: rgba(0, 0, 0, 0.06);
+  
+  /* Legacy mapping */
+  --background: var(--bg-secondary);
+  --foreground: var(--text-primary);
+}
+
+/* Light theme */
+[data-theme="light"] {
+  /* Backgrounds - clean, warm whites and light grays */
+  --bg-base: #f2f3f5;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --bg-tertiary: #ebedef;
+  --bg-modifier-hover: #e3e5e8;
+  --bg-modifier-active: #d4d7dc;
+  --bg-modifier-selected: #d4d7dc;
+  
+  /* Accent colors - same blurple, works well on light */
+  --accent-primary: #5865f2;
+  --accent-primary-hover: #4752c4;
+  --accent-primary-active: #3c45a5;
+  --accent-secondary: #7289da;
+  --accent-soft: rgba(88, 101, 242, 0.1);
+  --accent-soft-hover: rgba(88, 101, 242, 0.2);
+  
+  /* Text hierarchy - dark text on light backgrounds */
+  --text-primary: #060607;
+  --text-secondary: #4e5058;
+  --text-muted: #6d6f78;
+  --text-faint: #949ba4;
+  --text-link: #0068e0;
+  
+  /* Borders */
+  --border-subtle: #e3e5e8;
+  --border-strong: #c4c9ce;
+  
+  /* Status colors - slightly adjusted for light mode contrast */
+  --status-online: #23a55a;
+  --status-idle: #e09b13;
+  --status-dnd: #da373c;
+  --status-offline: #80848e;
+  
+  /* Semantic colors */
+  --success: #23a55a;
+  --warning: #e09b13;
+  --danger: #da373c;
+  --info: #0068e0;
+  
+  /* Pin/bookmark accent */
+  --pin-color: #e09b13;
+  --bookmark-color: #5865f2;
+  
+  /* Message specific */
+  --message-hover: rgba(0, 0, 0, 0.03);
+  
+  /* Legacy mapping */
+  --background: var(--bg-secondary);
+  --foreground: var(--text-primary);
+}
+
+/* Midnight theme - deep blue-tinted dark */
+[data-theme="midnight"] {
+  /* Backgrounds - deep navy blues */
+  --bg-base: #0d1117;
+  --bg-primary: #161b22;
+  --bg-secondary: #1c2128;
+  --bg-tertiary: #252b35;
+  --bg-modifier-hover: #2d333b;
+  --bg-modifier-active: #373e47;
+  --bg-modifier-selected: #3d4450;
+  
+  /* Accent colors - cyan/teal accent */
+  --accent-primary: #58a6ff;
+  --accent-primary-hover: #4393e6;
+  --accent-primary-active: #3180cd;
+  --accent-secondary: #79c0ff;
+  --accent-soft: rgba(88, 166, 255, 0.15);
+  --accent-soft-hover: rgba(88, 166, 255, 0.25);
+  
+  /* Text hierarchy */
+  --text-primary: #e6edf3;
+  --text-secondary: #b1bac4;
+  --text-muted: #8b949e;
+  --text-faint: #6e7681;
+  --text-link: #58a6ff;
+  
+  /* Borders */
+  --border-subtle: #30363d;
+  --border-strong: #444c56;
+  
+  /* Status colors */
+  --status-online: #3fb950;
+  --status-idle: #d29922;
+  --status-dnd: #f85149;
+  --status-offline: #6e7681;
+  
+  /* Semantic colors */
+  --success: #3fb950;
+  --warning: #d29922;
+  --danger: #f85149;
+  --info: #58a6ff;
+  
+  /* Pin/bookmark accent */
+  --pin-color: #d29922;
+  --bookmark-color: #58a6ff;
+  
+  /* Message specific */
+  --message-hover: rgba(0, 0, 0, 0.08);
+  
+  /* Legacy mapping */
+  --background: var(--bg-secondary);
+  --foreground: var(--text-primary);
+}
+
+/* Forest theme - green-tinted dark */
+[data-theme="forest"] {
+  /* Backgrounds - deep forest greens */
+  --bg-base: #0f1612;
+  --bg-primary: #171f1a;
+  --bg-secondary: #1d2721;
+  --bg-tertiary: #263029;
+  --bg-modifier-hover: #2d3a32;
+  --bg-modifier-active: #38473e;
+  --bg-modifier-selected: #3f5045;
+  
+  /* Accent colors - emerald green */
+  --accent-primary: #34d399;
+  --accent-primary-hover: #2ab882;
+  --accent-primary-active: #229d6c;
+  --accent-secondary: #6ee7b7;
+  --accent-soft: rgba(52, 211, 153, 0.15);
+  --accent-soft-hover: rgba(52, 211, 153, 0.25);
+  
+  /* Text hierarchy */
+  --text-primary: #ecfdf5;
+  --text-secondary: #a7c4b5;
+  --text-muted: #7a9c8a;
+  --text-faint: #5a7a68;
+  --text-link: #34d399;
+  
+  /* Borders */
+  --border-subtle: #2d3a32;
+  --border-strong: #3f5045;
+  
+  /* Status colors */
+  --status-online: #34d399;
+  --status-idle: #fbbf24;
+  --status-dnd: #f87171;
+  --status-offline: #5a7a68;
+  
+  /* Semantic colors */
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --info: #38bdf8;
+  
+  /* Pin/bookmark accent */
+  --pin-color: #fbbf24;
+  --bookmark-color: #34d399;
+  
+  /* Message specific */
+  --message-hover: rgba(0, 0, 0, 0.08);
+  
+  /* Legacy mapping */
+  --background: var(--bg-secondary);
+  --foreground: var(--text-primary);
+}
+
+/* Sunset theme - warm orange/amber tones */
+[data-theme="sunset"] {
+  /* Backgrounds - warm dark browns */
+  --bg-base: #1a1412;
+  --bg-primary: #231c18;
+  --bg-secondary: #2a221d;
+  --bg-tertiary: #362c25;
+  --bg-modifier-hover: #3f342c;
+  --bg-modifier-active: #4d4037;
+  --bg-modifier-selected: #564840;
+  
+  /* Accent colors - warm orange */
+  --accent-primary: #f97316;
+  --accent-primary-hover: #ea6c0f;
+  --accent-primary-active: #c65d0d;
+  --accent-secondary: #fb923c;
+  --accent-soft: rgba(249, 115, 22, 0.15);
+  --accent-soft-hover: rgba(249, 115, 22, 0.25);
+  
+  /* Text hierarchy */
+  --text-primary: #fef3e2;
+  --text-secondary: #d4c4b0;
+  --text-muted: #a89888;
+  --text-faint: #7a6e62;
+  --text-link: #fb923c;
+  
+  /* Borders */
+  --border-subtle: #3f342c;
+  --border-strong: #564840;
+  
+  /* Status colors */
+  --status-online: #4ade80;
+  --status-idle: #fbbf24;
+  --status-dnd: #f87171;
+  --status-offline: #7a6e62;
+  
+  /* Semantic colors */
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --info: #38bdf8;
+  
+  /* Pin/bookmark accent */
+  --pin-color: #fbbf24;
+  --bookmark-color: #f97316;
+  
+  /* Message specific */
+  --message-hover: rgba(0, 0, 0, 0.08);
+  
+  /* Legacy mapping */
+  --background: var(--bg-secondary);
+  --foreground: var(--text-primary);
 }
 
 @theme inline {
@@ -10,25 +275,61 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  
+  /* Custom colors for Tailwind */
+  --color-base: var(--bg-base);
+  --color-surface: var(--bg-primary);
+  --color-elevated: var(--bg-secondary);
+  --color-overlay: var(--bg-tertiary);
+  --color-hover: var(--bg-modifier-hover);
+  --color-active: var(--bg-modifier-active);
+  --color-selected: var(--bg-modifier-selected);
+  
+  --color-accent: var(--accent-primary);
+  --color-accent-hover: var(--accent-primary-hover);
+  --color-accent-soft: var(--accent-soft);
+  
+  --color-text: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+  
+  --color-border: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  
+  --color-success: var(--status-online);
+  --color-warning: var(--status-idle);
+  --color-danger: var(--status-dnd);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Dark scrollbar */
+/* Dark scrollbar with accent color */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #3f3f46 transparent;
+  scrollbar-color: var(--bg-modifier-active) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--bg-modifier-active);
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
 }
 
 /* Typing indicator dots animation */

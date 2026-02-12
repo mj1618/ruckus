@@ -2,6 +2,12 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 
+// Check if message text contains bot mentions (usernames ending in _bot)
+function hasBotMentions(text: string): boolean {
+  const botMentionRegex = /@[a-z0-9_]+_bot\b/i;
+  return botMentionRegex.test(text);
+}
+
 export const generateUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
@@ -15,6 +21,7 @@ export const sendMessage = mutation({
     userId: v.id("users"),
     text: v.string(),
     parentMessageId: v.optional(v.id("messages")),
+    replyToMessageId: v.optional(v.id("messages")),
     attachments: v.optional(v.array(v.object({
       storageId: v.id("_storage"),
       filename: v.string(),
@@ -70,6 +77,15 @@ export const sendMessage = mutation({
       });
     }
 
+    // Validate inline reply target if provided
+    if (args.replyToMessageId) {
+      const replyTarget = await ctx.db.get("messages", args.replyToMessageId);
+      if (!replyTarget) throw new Error("Reply target message not found");
+      if (replyTarget.channelId !== channelId) {
+        throw new Error("Cannot reply to a message in a different channel");
+      }
+    }
+
     const messageId = await ctx.db.insert("messages", {
       channelId,
       userId: args.userId,
@@ -77,6 +93,9 @@ export const sendMessage = mutation({
       ...(messageType ? { type: messageType } : {}),
       ...(args.parentMessageId
         ? { parentMessageId: args.parentMessageId }
+        : {}),
+      ...(args.replyToMessageId
+        ? { replyToMessageId: args.replyToMessageId }
         : {}),
       ...(args.attachments && args.attachments.length > 0
         ? { attachments: args.attachments }
@@ -92,6 +111,24 @@ export const sendMessage = mutation({
         messageId,
         url,
       });
+    }
+
+    // Schedule webhook dispatch for bot mentions
+    if (hasBotMentions(messageText)) {
+      const sender = await ctx.db.get("users", args.userId);
+      const channel = await ctx.db.get("channels", channelId);
+      if (sender && channel) {
+        await ctx.scheduler.runAfter(0, internal.botWebhookDispatcher.dispatchMentionWebhooks, {
+          messageId,
+          channelId,
+          channelName: channel.name,
+          text: messageText,
+          senderId: args.userId,
+          senderUsername: sender.username,
+          parentMessageId: args.parentMessageId,
+          createdAt: Date.now(),
+        });
+      }
     }
 
     // Clear typing indicator for this user in this channel
@@ -134,7 +171,7 @@ export const getMessages = query({
         .filter((u) => u !== null)
         .map((u) => [
           u._id,
-          { _id: u._id, username: u.username, avatarColor: u.avatarColor, statusEmoji: u.statusEmoji, statusText: u.statusText },
+          { _id: u._id, username: u.username, avatarColor: u.avatarColor, statusEmoji: u.statusEmoji, statusText: u.statusText, isBot: u.isBot },
         ])
     );
 
@@ -165,6 +202,51 @@ export const getMessages = query({
             avatarColor: u.avatarColor,
             statusEmoji: u.statusEmoji,
             statusText: u.statusText,
+            isBot: u.isBot,
+          });
+        }
+      }
+    }
+
+    // Fetch reply-to messages info for inline replies
+    const replyToMessageIds = [
+      ...new Set(
+        topLevelMessages
+          .map((m) => m.replyToMessageId)
+          .filter((id): id is NonNullable<typeof id> => id !== undefined)
+      ),
+    ];
+    const replyToMessages = await Promise.all(
+      replyToMessageIds.map((id) => ctx.db.get("messages", id))
+    );
+    const replyToMessageMap = new Map(
+      replyToMessages
+        .filter((m) => m !== null)
+        .map((m) => [m._id, m])
+    );
+
+    // Fetch users for reply-to messages (if not already in userMap)
+    const replyToUserIds = [
+      ...new Set(
+        replyToMessages
+          .filter((m) => m !== null)
+          .map((m) => m.userId)
+          .filter((id) => !userMap.has(id))
+      ),
+    ];
+    if (replyToUserIds.length > 0) {
+      const replyToUsers = await Promise.all(
+        replyToUserIds.map((id) => ctx.db.get("users", id))
+      );
+      for (const u of replyToUsers) {
+        if (u) {
+          userMap.set(u._id, {
+            _id: u._id,
+            username: u.username,
+            avatarColor: u.avatarColor,
+            statusEmoji: u.statusEmoji,
+            statusText: u.statusText,
+            isBot: u.isBot,
           });
         }
       }
@@ -205,6 +287,20 @@ export const getMessages = query({
           )
         : undefined;
 
+      // Build reply-to info if this message is an inline reply
+      let replyTo: { messageId: string; username: string; text: string } | undefined;
+      if (m.replyToMessageId) {
+        const replyToMsg = replyToMessageMap.get(m.replyToMessageId);
+        if (replyToMsg) {
+          const replyToUser = userMap.get(replyToMsg.userId);
+          replyTo = {
+            messageId: replyToMsg._id,
+            username: replyToUser?.username ?? "Unknown",
+            text: replyToMsg.text,
+          };
+        }
+      }
+
       return {
         _id: m._id,
         text: m.text,
@@ -213,6 +309,7 @@ export const getMessages = query({
         replyCount: m.replyCount,
         latestReplyTime: m.latestReplyTime,
         type: m.type,
+        replyTo,
         user: userMap.get(m.userId) ?? {
           _id: m.userId,
           username: "Unknown",
@@ -254,7 +351,7 @@ export const getThreadMessages = query({
         .filter((u) => u !== null)
         .map((u) => [
           u._id,
-          { _id: u._id, username: u.username, avatarColor: u.avatarColor, statusEmoji: u.statusEmoji, statusText: u.statusText },
+          { _id: u._id, username: u.username, avatarColor: u.avatarColor, statusEmoji: u.statusEmoji, statusText: u.statusText, isBot: u.isBot },
         ])
     );
 
@@ -265,6 +362,7 @@ export const getThreadMessages = query({
         avatarColor: parentUser.avatarColor,
         statusEmoji: parentUser.statusEmoji,
         statusText: parentUser.statusText,
+        isBot: parentUser.isBot,
       });
     }
 
@@ -296,6 +394,7 @@ export const getThreadMessages = query({
             avatarColor: u.avatarColor,
             statusEmoji: u.statusEmoji,
             statusText: u.statusText,
+            isBot: u.isBot,
           });
         }
       }

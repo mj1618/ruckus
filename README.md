@@ -1,4 +1,21 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ruckus
+
+A real-time collaborative chat app built with Next.js and Convex.
+
+## Features
+
+- Real-time messaging with channels
+- Threaded replies
+- Emoji reactions
+- @mentions with autocomplete
+- File attachments
+- Typing indicators
+- Link previews
+- Polls, bookmarks, and more
+
+## Bot API
+
+Ruckus supports bots that can listen for @mentions, show typing indicators, and post messages. See the [Bot API Documentation (MOLT)](./BOT_API.md) for details on building integrations.
 
 ## Getting Started
 

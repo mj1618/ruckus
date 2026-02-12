@@ -55,7 +55,7 @@ export const seedDefaultChannels = mutation({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const defaults = ["general", "random", "introductions"];
+    const defaults = ["general", "random", "introductions", "draw"];
     await Promise.all(
       defaults.map(async (name) => {
         const existing = await ctx.db

@@ -53,15 +53,15 @@ export function StatusPicker({ userId, currentEmoji, currentText, onClose }: Sta
   }
 
   return (
-    <div className="absolute bottom-full left-0 z-50 mb-1 w-72 rounded-lg border border-zinc-700 bg-zinc-800 p-3 shadow-xl">
-      <div className="mb-2 text-xs font-semibold uppercase text-zinc-400">Set a status</div>
+    <div className="absolute bottom-full left-0 z-50 mb-1 w-72 rounded-lg border border-border bg-overlay p-3 shadow-xl">
+      <div className="mb-2 text-xs font-semibold uppercase text-text-muted">Set a status</div>
 
       {/* Input row */}
       <div className="mb-2 flex gap-2">
         <div className="relative">
           <button
             type="button"
-            className="flex h-9 w-9 items-center justify-center rounded border border-zinc-600 bg-zinc-700 text-lg hover:bg-zinc-600"
+            className="flex h-9 w-9 items-center justify-center rounded border border-border-strong bg-active text-lg hover:bg-selected"
             onClick={() => setShowEmojiPicker(v => !v)}
           >
             {emoji || "😀"}
@@ -79,7 +79,7 @@ export function StatusPicker({ userId, currentEmoji, currentText, onClose }: Sta
           onChange={(e) => setText(e.target.value)}
           placeholder="What's your status?"
           maxLength={100}
-          className="flex-1 rounded border border-zinc-600 bg-zinc-700 px-2 py-1 text-sm text-zinc-100 outline-none focus:border-indigo-500"
+          className="flex-1 rounded border border-border-strong bg-active px-2 py-1 text-sm text-text outline-none focus:border-accent"
           onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") onClose(); }}
           autoFocus
         />
@@ -91,7 +91,7 @@ export function StatusPicker({ userId, currentEmoji, currentText, onClose }: Sta
           <button
             key={preset.text}
             type="button"
-            className="flex w-full items-center gap-2 rounded px-2 py-1 text-sm text-zinc-300 hover:bg-zinc-700"
+            className="flex w-full items-center gap-2 rounded px-2 py-1 text-sm text-text-secondary hover:bg-active"
             onClick={() => handlePreset(preset)}
           >
             <span>{preset.emoji}</span>
@@ -104,7 +104,7 @@ export function StatusPicker({ userId, currentEmoji, currentText, onClose }: Sta
       <div className="flex gap-2">
         <button
           type="button"
-          className="flex-1 rounded bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500"
+          className="flex-1 rounded bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-hover"
           onClick={handleSave}
         >
           Save
@@ -112,7 +112,7 @@ export function StatusPicker({ userId, currentEmoji, currentText, onClose }: Sta
         {(currentEmoji || currentText) && (
           <button
             type="button"
-            className="rounded border border-zinc-600 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-700"
+            className="rounded border border-border-strong px-3 py-1.5 text-sm text-text-secondary hover:bg-active"
             onClick={handleClear}
           >
             Clear

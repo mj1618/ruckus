@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
@@ -9,21 +9,76 @@ import { MentionAutocomplete } from "@/components/MentionAutocomplete";
 import { SlashCommandHint, SLASH_COMMANDS } from "@/components/SlashCommandHint";
 import { GifPicker } from "@/components/GifPicker";
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILES = 5;
+const ALLOWED_TYPES = new Set([
+  "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml",
+  "application/pdf", "text/plain", "text/markdown",
+  "application/zip",
+]);
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function validateFiles(files: File[], existingCount: number): { valid: File[]; errors: string[] } {
+  const errors: string[] = [];
+  const valid: File[] = [];
+  const remaining = MAX_FILES - existingCount;
+
+  for (const file of files) {
+    if (valid.length >= remaining) {
+      errors.push(`Maximum ${MAX_FILES} files per message`);
+      break;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      errors.push(`${file.name} exceeds 10MB limit`);
+      continue;
+    }
+    if (!ALLOWED_TYPES.has(file.type)) {
+      errors.push(`${file.name}: unsupported file type`);
+      continue;
+    }
+    valid.push(file);
+  }
+  return { valid, errors };
+}
+
+interface ReplyToMessage {
+  _id: Id<"messages">;
+  text: string;
+  user: {
+    username: string;
+  };
+}
+
 interface MessageInputProps {
   channelId: Id<"channels">;
   channelName: string;
   parentMessageId?: Id<"messages">;
+  replyToMessage?: ReplyToMessage;
+  onCancelReply?: () => void;
   placeholder?: string;
+  droppedFiles?: File[];
+  onDroppedFilesHandled?: () => void;
 }
 
-export function MessageInput({ channelId, channelName, parentMessageId, placeholder }: MessageInputProps) {
+export function MessageInput({ channelId, channelName, parentMessageId, replyToMessage, onCancelReply, placeholder, droppedFiles, onDroppedFilesHandled }: MessageInputProps) {
   const { user } = useUser();
   const [text, setText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lastTypingRef = useRef(0);
 
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const sendMessage = useMutation(api.messages.sendMessage);
+  const generateUploadUrl = useMutation(api.messages.generateUploadUrl);
   const createPoll = useMutation(api.polls.createPoll);
   const changeUsername = useMutation(api.users.changeUsername);
   const setUserStatus = useMutation(api.users.setStatus);
@@ -34,6 +89,14 @@ export function MessageInput({ channelId, channelName, parentMessageId, placehol
 
   const onlineUsers = useQuery(api.users.getOnlineUsers);
   const [showGifPicker, setShowGifPicker] = useState(false);
+
+  // Handle files dropped from parent (drag-and-drop zone)
+  useEffect(() => {
+    if (droppedFiles && droppedFiles.length > 0) {
+      addFiles(droppedFiles);
+      onDroppedFilesHandled?.();
+    }
+  }, [droppedFiles]);
 
   const [slashState, setSlashState] = useState<{
     active: boolean;
@@ -95,14 +158,77 @@ export function MessageInput({ channelId, channelName, parentMessageId, placehol
     }
   }
 
+  function addFiles(files: File[]) {
+    setFileError(null);
+    const { valid, errors } = validateFiles(files, pendingFiles.length);
+    if (errors.length > 0) {
+      setFileError(errors[0]);
+    }
+    if (valid.length > 0) {
+      setPendingFiles((prev) => [...prev, ...valid]);
+    }
+  }
+
+  function removeFile(index: number) {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
+    setFileError(null);
+  }
+
+  function handleFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files) {
+      addFiles(Array.from(e.target.files));
+      e.target.value = "";
+    }
+  }
+
+  function handlePaste(e: React.ClipboardEvent) {
+    const items = e.clipboardData.items;
+    const imageFiles: File[] = [];
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) imageFiles.push(file);
+      }
+    }
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      addFiles(imageFiles);
+    }
+  }
+
+  async function uploadFiles(files: File[]) {
+    return Promise.all(
+      files.map(async (file) => {
+        const uploadUrl = await generateUploadUrl();
+        const res = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+        const { storageId } = (await res.json()) as { storageId: Id<"_storage"> };
+        return {
+          storageId,
+          filename: file.name,
+          contentType: file.type,
+          size: file.size,
+        };
+      })
+    );
+  }
+
   const handleSend = async () => {
     const trimmed = text.trim();
-    if (!trimmed || !user || isSending) return;
+    const hasFiles = pendingFiles.length > 0;
+    if ((!trimmed && !hasFiles) || !user || isSending) return;
 
     setIsSending(true);
+    setIsUploading(hasFiles);
     setText("");
     setMentionState(null);
     setSlashState(null);
+    const filesToUpload = [...pendingFiles];
+    setPendingFiles([]);
+    setFileError(null);
     try {
       // Handle /poll command
       if (trimmed.toLowerCase().startsWith("/poll ")) {
@@ -165,18 +291,29 @@ export function MessageInput({ channelId, channelName, parentMessageId, placehol
           ...(parentMessageId ? { parentMessageId } : {}),
         });
       } else {
+        // Upload files if any
+        let attachments: Awaited<ReturnType<typeof uploadFiles>> | undefined;
+        if (filesToUpload.length > 0) {
+          attachments = await uploadFiles(filesToUpload);
+          setIsUploading(false);
+        }
         // /me and /shrug are handled server-side; everything else is a normal message
         await sendMessage({
           channelId,
           userId: user._id,
-          text: trimmed,
+          text: trimmed || " ",
           ...(parentMessageId ? { parentMessageId } : {}),
+          ...(replyToMessage ? { replyToMessageId: replyToMessage._id } : {}),
+          ...(attachments ? { attachments } : {}),
         });
       }
+      // Clear reply after successful send
+      onCancelReply?.();
     } catch {
       setText(trimmed);
     } finally {
       setIsSending(false);
+      setIsUploading(false);
       textareaRef.current?.focus();
     }
   };
@@ -342,25 +479,103 @@ export function MessageInput({ channelId, channelName, parentMessageId, placehol
           position={{ bottom: 48, left: 0 }}
         />
       )}
-      <div className="flex items-end gap-2 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2">
+      {/* File previews */}
+      {pendingFiles.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-2 rounded-lg border border-border bg-overlay/50 p-2">
+          {pendingFiles.map((file, i) => (
+            <div key={i} className="group/file relative">
+              {file.type.startsWith("image/") ? (
+                <img
+                  src={URL.createObjectURL(file)}
+                  alt={file.name}
+                  className="h-16 w-16 rounded object-cover"
+                />
+              ) : (
+                <div className="flex h-16 w-24 flex-col items-center justify-center rounded bg-active px-2">
+                  <span className="truncate text-xs text-text-secondary">{file.name}</span>
+                  <span className="text-xs text-text-muted">{formatFileSize(file.size)}</span>
+                </div>
+              )}
+              <button
+                type="button"
+                className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-danger text-[10px] text-white opacity-0 transition-opacity group-hover/file:opacity-100"
+                onClick={() => removeFile(i)}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {fileError && (
+        <div className="mb-1 text-xs text-danger">{fileError}</div>
+      )}
+      {isUploading && (
+        <div className="mb-1 text-xs text-accent">Uploading files...</div>
+      )}
+      {/* Reply preview bar */}
+      {replyToMessage && (
+        <div className="mb-2 flex items-center justify-between rounded-lg border border-border bg-overlay/50 px-3 py-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="text-text-muted">↩</span>
+            <span className="text-sm text-text-muted">Replying to</span>
+            <span className="text-sm font-medium text-text-secondary">@{replyToMessage.user.username}</span>
+            <span className="truncate text-sm text-text-muted">
+              {replyToMessage.text.length > 50 
+                ? replyToMessage.text.slice(0, 50) + "…" 
+                : replyToMessage.text}
+            </span>
+          </div>
+          <button
+            type="button"
+            className="ml-2 rounded p-1 text-text-muted hover:bg-active hover:text-text-secondary"
+            onClick={onCancelReply}
+            title="Cancel reply"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml,application/pdf,text/plain,text/markdown,application/zip"
+        className="hidden"
+        onChange={handleFileInputChange}
+      />
+      <div className="flex items-end gap-2 rounded-lg border border-border bg-overlay px-3 py-2">
         <textarea
           ref={textareaRef}
           value={text}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           placeholder={placeholder ?? `Message #${channelName}`}
           maxLength={4000}
           rows={1}
-          className="max-h-[120px] min-h-[24px] flex-1 resize-none bg-transparent text-sm text-zinc-100 placeholder-zinc-500 outline-none"
+          className="max-h-[120px] min-h-[24px] flex-1 resize-none bg-transparent text-sm text-text placeholder-text-muted outline-none"
         />
         <div className="flex items-center gap-2">
           {showCharCount && (
-            <span className="text-xs text-zinc-500">{text.length}/4000</span>
+            <span className="text-xs text-text-muted">{text.length}/4000</span>
           )}
+          <button
+            type="button"
+            className="rounded px-1.5 py-0.5 text-text-muted transition-colors hover:bg-active hover:text-text"
+            onClick={() => fileInputRef.current?.click()}
+            title="Attach files"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+            </svg>
+          </button>
           <div className="relative">
             <button
               type="button"
-              className="rounded px-1.5 py-0.5 text-xs font-bold text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-200"
+              className="rounded px-1.5 py-0.5 text-xs font-bold text-text-muted transition-colors hover:bg-active hover:text-text"
               onClick={() => setShowGifPicker((v) => !v)}
               title="Send a GIF"
             >
@@ -373,11 +588,11 @@ export function MessageInput({ channelId, channelName, parentMessageId, placehol
               />
             )}
           </div>
-          {text.trim() && (
+          {(text.trim() || pendingFiles.length > 0) && (
             <button
               onClick={handleSend}
               disabled={isSending}
-              className="rounded bg-indigo-500 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-indigo-600 disabled:opacity-50"
+              className="rounded bg-accent px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
             >
               Send
             </button>

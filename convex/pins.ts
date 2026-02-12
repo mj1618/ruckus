@@ -105,6 +105,15 @@ export const getPinnedMessages = query({
           }
         }
 
+        const attachmentsWithUrls = message.attachments
+          ? await Promise.all(
+              message.attachments.map(async (att) => ({
+                ...att,
+                url: await ctx.storage.getUrl(att.storageId),
+              }))
+            )
+          : undefined;
+
         return {
           pin: {
             _id: pin._id,
@@ -118,6 +127,7 @@ export const getPinnedMessages = query({
             editedAt: message.editedAt,
             replyCount: message.replyCount,
             latestReplyTime: message.latestReplyTime,
+            attachments: attachmentsWithUrls,
             user: user
               ? {
                   _id: user._id,

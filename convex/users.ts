@@ -22,24 +22,39 @@ export const joinOrReturn = mutation({
     username: v.string(),
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db
+    const username = args.username.trim();
+    if (!username || username.length > 30) {
+      throw new Error("Invalid username");
+    }
+
+    const existingSession = await ctx.db
       .query("users")
       .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
       .unique();
 
-    if (existing) {
-      await ctx.db.patch("users", existing._id, {
-        username: args.username,
-        avatarColor: getAvatarColor(args.username),
+    // Check if username is already taken by another user
+    const existingUsername = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", username))
+      .unique();
+
+    if (existingUsername && existingUsername._id !== existingSession?._id) {
+      throw new Error("Username already taken");
+    }
+
+    if (existingSession) {
+      await ctx.db.patch("users", existingSession._id, {
+        username,
+        avatarColor: getAvatarColor(username),
         lastSeen: Date.now(),
       });
-      return existing._id;
+      return existingSession._id;
     }
 
     const userId = await ctx.db.insert("users", {
-      username: args.username,
+      username,
       sessionId: args.sessionId,
-      avatarColor: getAvatarColor(args.username),
+      avatarColor: getAvatarColor(username),
       lastSeen: Date.now(),
     });
     return userId;

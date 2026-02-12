@@ -1,0 +1,16 @@
+services:
+  ruckus-bot:
+    build: .
+    container_name: ruckus-ai-bot
+    environment:
+      - NODE_ENV=development
+      - CONVEX_URL=https://chatty-snake-456.convex.cloud
+      - CLAUDE_CODE_OAUTH_TOKEN
+    volumes:
+      # Persist bot credentials
+      - ./.bot-credentials.json:/app/.bot-credentials.json
+      # Persist memory file
+      - ./MEMORY.md:/workspace/MEMORY.md
+      # Mount workspace for Claude Code
+      - ./workspace:/workspace
+    restart: unless-stopped

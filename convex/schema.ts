@@ -12,9 +12,27 @@ const schema = defineSchema({
     lastSeen: v.number(),
     statusEmoji: v.optional(v.string()),
     statusText: v.optional(v.string()),
+    isBot: v.optional(v.boolean()),
   })
     .index("by_sessionId", ["sessionId"])
     .index("by_username", ["username"]),
+
+  botApiKeys: defineTable({
+    userId: v.id("users"),
+    apiKey: v.string(),
+    name: v.string(),
+    createdAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+  })
+    .index("by_apiKey", ["apiKey"])
+    .index("by_userId", ["userId"]),
+
+  botWebhooks: defineTable({
+    botId: v.id("users"),
+    url: v.string(),
+    secret: v.string(),
+    createdAt: v.number(),
+  }).index("by_botId", ["botId"]),
 
   channels: defineTable({
     name: v.string(),
@@ -28,6 +46,7 @@ const schema = defineSchema({
     text: v.string(),
     editedAt: v.optional(v.number()),
     parentMessageId: v.optional(v.id("messages")),
+    replyToMessageId: v.optional(v.id("messages")),
     replyCount: v.optional(v.number()),
     latestReplyTime: v.optional(v.number()),
     type: v.optional(v.union(v.literal("action"), v.literal("poll"), v.literal("system"))),
@@ -117,6 +136,18 @@ const schema = defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_userId_messageId", ["userId", "messageId"]),
+
+  drawStrokes: defineTable({
+    channelId: v.id("channels"),
+    userId: v.id("users"),
+    points: v.array(v.object({
+      x: v.number(),
+      y: v.number(),
+    })),
+    color: v.string(),
+    width: v.number(),
+    createdAt: v.number(),
+  }).index("by_channelId", ["channelId"]),
 });
 
 export default schema;

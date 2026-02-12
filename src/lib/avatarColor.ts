@@ -1,8 +1,21 @@
+// Discord/Slack-inspired avatar colors - rich, vibrant colors that pop against dark backgrounds
 export const AVATAR_COLORS = [
-  "#ef4444", "#f97316", "#f59e0b", "#eab308",
-  "#84cc16", "#22c55e", "#14b8a6", "#06b6d4",
-  "#0ea5e9", "#3b82f6", "#6366f1", "#8b5cf6",
-  "#a855f7", "#d946ef", "#ec4899", "#f43f5e",
+  "#5865f2", // Discord blurple
+  "#3ba55c", // Green
+  "#faa61a", // Yellow/gold
+  "#ed4245", // Red
+  "#eb459e", // Fuchsia
+  "#9b59b6", // Purple
+  "#1abc9c", // Teal
+  "#e67e22", // Orange
+  "#2ecc71", // Emerald
+  "#3498db", // Light blue
+  "#e91e63", // Pink
+  "#00bcd4", // Cyan
+  "#8e44ad", // Deep purple
+  "#27ae60", // Forest green
+  "#f39c12", // Amber
+  "#e74c3c", // Coral red
 ];
 
 export function getAvatarColor(username: string): string {

@@ -64,9 +64,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     try {
       const userId = await joinOrReturn({ sessionId, username });
       await seedChannels({ userId });
-    } finally {
+    } catch (error) {
       setIsJoining(false);
+      throw error;
     }
+    setIsJoining(false);
   };
 
   return (

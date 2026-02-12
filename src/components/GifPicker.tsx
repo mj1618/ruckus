@@ -81,16 +81,16 @@ export function GifPicker({ onSelect, onClose }: GifPickerProps) {
   return (
     <div
       ref={ref}
-      className="absolute bottom-full right-0 z-50 mb-2 flex h-[400px] w-[340px] flex-col rounded-lg border border-zinc-700 bg-zinc-800 shadow-xl"
+      className="absolute bottom-full right-0 z-50 mb-2 flex h-[400px] w-[340px] flex-col rounded-lg border border-border bg-overlay shadow-xl"
     >
       {/* Search input */}
-      <div className="border-b border-zinc-700 p-2">
+      <div className="border-b border-border p-2">
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search GIFs..."
-          className="w-full rounded bg-zinc-700 px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:ring-1 focus:ring-indigo-500"
+          className="w-full rounded bg-active px-3 py-1.5 text-sm text-text placeholder-text-muted outline-none focus:ring-1 focus:ring-accent"
           autoFocus
         />
       </div>
@@ -98,17 +98,17 @@ export function GifPicker({ onSelect, onClose }: GifPickerProps) {
       {/* GIF grid */}
       <div className="flex-1 overflow-y-auto p-2">
         {loading && (
-          <div className="flex h-full items-center justify-center text-sm text-zinc-500">
+          <div className="flex h-full items-center justify-center text-sm text-text-muted">
             Searching...
           </div>
         )}
         {!loading && !searched && (
-          <div className="flex h-full items-center justify-center text-sm text-zinc-500">
+          <div className="flex h-full items-center justify-center text-sm text-text-muted">
             Type to search for GIFs
           </div>
         )}
         {!loading && searched && results.length === 0 && (
-          <div className="flex h-full items-center justify-center text-sm text-zinc-500">
+          <div className="flex h-full items-center justify-center text-sm text-text-muted">
             No GIFs found
           </div>
         )}
@@ -119,7 +119,7 @@ export function GifPicker({ onSelect, onClose }: GifPickerProps) {
                 key={gif.id}
                 type="button"
                 onClick={() => onSelect(gif.url)}
-                className="overflow-hidden rounded hover:ring-2 hover:ring-indigo-500"
+                className="overflow-hidden rounded hover:ring-2 hover:ring-accent"
               >
                 <img
                   src={gif.previewUrl}
@@ -134,7 +134,7 @@ export function GifPicker({ onSelect, onClose }: GifPickerProps) {
       </div>
 
       {/* Tenor attribution */}
-      <div className="border-t border-zinc-700 px-2 py-1 text-center text-xs text-zinc-500">
+      <div className="border-t border-border px-2 py-1 text-center text-xs text-text-muted">
         Powered by Tenor
       </div>
     </div>

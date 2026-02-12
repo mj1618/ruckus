@@ -42,3 +42,6 @@ next-env.d.ts
 
 # convex
 convex/_generated/
+
+.playwright-cli/
+swarm/outputs/

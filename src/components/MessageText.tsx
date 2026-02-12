@@ -79,7 +79,7 @@ function renderTextWithMentions(text: string): React.ReactNode[] {
       return (
         <span key={i}>
           {mentionMatch[1]}
-          <span className="rounded bg-indigo-500/20 px-0.5 text-indigo-300">
+          <span className="rounded bg-accent-soft px-0.5 text-accent">
             {mentionMatch[2]}
           </span>
         </span>
@@ -111,13 +111,13 @@ const markdownComponents: Components = {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-indigo-400 underline decoration-indigo-400/50 hover:decoration-indigo-400"
+      className="text-accent underline decoration-accent/50 hover:decoration-accent"
     >
       {children}
     </a>
   ),
   pre: ({ children }) => (
-    <pre className="my-1 overflow-x-auto rounded-md bg-zinc-900 p-3 text-sm">
+    <pre className="my-1 overflow-x-auto rounded-md bg-base p-3 text-sm">
       {children}
     </pre>
   ),
@@ -131,13 +131,13 @@ const markdownComponents: Components = {
       );
     }
     return (
-      <code className="rounded bg-zinc-700 px-1.5 py-0.5 text-sm text-orange-300">
+      <code className="rounded bg-overlay px-1.5 py-0.5 text-sm text-orange-300">
         {children}
       </code>
     );
   },
   blockquote: ({ children }) => (
-    <blockquote className="my-1 border-l-2 border-zinc-600 pl-3 text-zinc-400 italic">
+    <blockquote className="my-1 border-l-2 border-border-strong pl-3 text-text-muted italic">
       {children}
     </blockquote>
   ),
@@ -145,19 +145,19 @@ const markdownComponents: Components = {
     <span className="block">{wrapTextChildren(children)}</span>
   ),
   strong: ({ children }) => (
-    <strong className="font-bold text-zinc-100">{wrapTextChildren(children)}</strong>
+    <strong className="font-bold text-text">{wrapTextChildren(children)}</strong>
   ),
   em: ({ children }) => (
-    <em className="italic text-zinc-300">{wrapTextChildren(children)}</em>
+    <em className="italic text-text-secondary">{wrapTextChildren(children)}</em>
   ),
   del: ({ children }) => (
-    <del className="text-zinc-500 line-through">{wrapTextChildren(children)}</del>
+    <del className="text-text-muted line-through">{wrapTextChildren(children)}</del>
   ),
   ul: ({ children }) => (
-    <ul className="my-1 ml-4 list-disc text-zinc-300">{children}</ul>
+    <ul className="my-1 ml-4 list-disc text-text-secondary">{children}</ul>
   ),
   ol: ({ children }) => (
-    <ol className="my-1 ml-4 list-decimal text-zinc-300">{children}</ol>
+    <ol className="my-1 ml-4 list-decimal text-text-secondary">{children}</ol>
   ),
   li: ({ children }) => (
     <li className="my-0.5">{wrapTextChildren(children)}</li>
@@ -171,10 +171,10 @@ const markdownComponents: Components = {
     />
   ),
   hr: () => (
-    <hr className="my-2 border-zinc-700" />
+    <hr className="my-2 border-border" />
   ),
   td: ({ children }) => (
-    <td className="border border-zinc-700 px-2 py-1">{wrapTextChildren(children)}</td>
+    <td className="border border-border px-2 py-1">{wrapTextChildren(children)}</td>
   ),
 };
 

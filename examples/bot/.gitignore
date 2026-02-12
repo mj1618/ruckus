@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+.env.*
+convex/_generated/
+.bot-credentials.json
+workspace/

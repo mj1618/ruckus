@@ -40,25 +40,25 @@ export function BookmarkedMessages({ onClose, onNavigateToChannel }: BookmarkedM
 
   if (bookmarks === undefined) {
     return (
-      <div className="flex h-full flex-col border-l border-zinc-800 bg-zinc-900">
-        <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-          <h3 className="text-sm font-bold text-zinc-100">🔖 Saved Messages</h3>
-          <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-200">
+      <div className="flex h-full flex-col border-l border-border bg-surface">
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <h3 className="text-sm font-bold text-text">🔖 Saved Messages</h3>
+          <button type="button" onClick={onClose} className="text-text-muted hover:text-text">
             ✕
           </button>
         </div>
         <div className="flex flex-1 items-center justify-center">
-          <p className="text-sm text-zinc-500">Loading...</p>
+          <p className="text-sm text-text-muted">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full flex-col border-l border-zinc-800 bg-zinc-900">
-      <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-        <h3 className="text-sm font-bold text-zinc-100">🔖 Saved Messages</h3>
-        <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-200">
+    <div className="flex h-full flex-col border-l border-border bg-surface">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <h3 className="text-sm font-bold text-text">🔖 Saved Messages</h3>
+        <button type="button" onClick={onClose} className="text-text-muted hover:text-text">
           ✕
         </button>
       </div>
@@ -66,38 +66,38 @@ export function BookmarkedMessages({ onClose, onNavigateToChannel }: BookmarkedM
       <div className="flex-1 overflow-y-auto">
         {bookmarks.length === 0 ? (
           <div className="flex flex-1 items-center justify-center p-8">
-            <p className="text-sm text-zinc-500">No saved messages yet</p>
+            <p className="text-sm text-text-muted">No saved messages yet</p>
           </div>
         ) : (
-          <div className="divide-y divide-zinc-800">
+          <div className="divide-y divide-border">
             {bookmarks.map(({ bookmark, message }) => (
-              <div key={bookmark._id} className="p-4">
+              <div key={bookmark._id} className="p-4 hover:bg-hover">
                 <div className="flex gap-3">
                   <div
-                    className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                    className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm"
                     style={{ backgroundColor: message.user.avatarColor }}
                   >
                     {message.user.username[0].toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-2">
-                      <span className="text-sm font-bold text-zinc-100">{message.user.username}</span>
-                      <span className="text-xs text-zinc-500">{formatTimestamp(message._creationTime)}</span>
+                      <span className="text-sm font-bold text-text">{message.user.username}</span>
+                      <span className="text-xs text-text-muted">{formatTimestamp(message._creationTime)}</span>
                     </div>
-                    <div className="mt-0.5 text-sm text-zinc-300 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                    <div className="mt-0.5 text-sm text-text-secondary [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
                       <MessageText text={message.text} />
                     </div>
-                    <div className="mt-2 flex items-center gap-2 text-xs text-zinc-500">
+                    <div className="mt-2 flex items-center gap-2 text-xs text-text-muted">
                       <button
                         type="button"
-                        className="text-indigo-400 hover:text-indigo-300 hover:underline"
+                        className="text-accent hover:text-accent-hover hover:underline"
                         onClick={() => onNavigateToChannel(message.channelId)}
                       >
                         in #{message.channelName}
                       </button>
                       <button
                         type="button"
-                        className="text-zinc-400 hover:text-red-400"
+                        className="text-text-muted hover:text-danger"
                         onClick={() => handleRemove(message._id)}
                       >
                         Remove

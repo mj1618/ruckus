@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
@@ -20,12 +20,18 @@ interface MessageItemProps {
     latestReplyTime?: number;
     parentMessageId?: Id<"messages">;
     type?: "action" | "poll" | "system";
+    replyTo?: {
+      messageId: string;
+      username: string;
+      text: string;
+    };
     user: {
       _id: Id<"users">;
       username: string;
       avatarColor: string;
       statusEmoji?: string;
       statusText?: string;
+      isBot?: boolean;
     };
     reactions: Array<{
       emoji: string;
@@ -44,6 +50,8 @@ interface MessageItemProps {
   isGrouped: boolean;
   currentUserId: Id<"users"> | undefined;
   onReplyInThread?: (messageId: Id<"messages">) => void;
+  onReply?: (message: { _id: Id<"messages">; text: string; user: { username: string } }) => void;
+  onScrollToMessage?: (messageId: string) => void;
   isPinned?: boolean;
   isBookmarked?: boolean;
   linkPreviews?: Array<{
@@ -71,6 +79,11 @@ function formatTimestamp(ts: number): string {
   }
   const dateStr = date.toLocaleDateString([], { month: "short", day: "numeric" });
   return `${dateStr}, ${time}`;
+}
+
+function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  return text.slice(0, maxLength).trim() + "…";
 }
 
 function ReactionBar({
@@ -105,8 +118,8 @@ function ReactionBar({
             title={r.usernames.join(", ")}
             className={`inline-flex cursor-pointer items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors ${
               currentUserReacted
-                ? "border-indigo-500/50 bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30"
-                : "border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                ? "border-accent/50 bg-accent-soft text-accent hover:bg-accent-soft"
+                : "border-border bg-overlay text-text-secondary hover:bg-active"
             }`}
             onClick={() => handleToggle(r.emoji)}
           >
@@ -118,7 +131,7 @@ function ReactionBar({
       <div className="relative">
         <button
           type="button"
-          className="inline-flex cursor-pointer items-center rounded-full border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400 hover:bg-zinc-700 hover:text-zinc-300"
+          className="inline-flex cursor-pointer items-center rounded-full border border-border bg-overlay px-2 py-0.5 text-xs text-text-muted hover:bg-active hover:text-text-secondary"
           onClick={() => setShowPicker((v) => !v)}
         >
           +
@@ -134,10 +147,14 @@ function ReactionBar({
   );
 }
 
-export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread, isPinned, isBookmarked, linkPreviews }: MessageItemProps) {
+export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread, onReply, onScrollToMessage, isPinned, isBookmarked, linkPreviews }: MessageItemProps) {
   const [showPicker, setShowPicker] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
+  const [showMobileActions, setShowMobileActions] = useState(false);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const messageContainerRef = useRef<HTMLDivElement>(null);
   const toggleReaction = useMutation(api.reactions.toggleReaction);
   const editMessage = useMutation(api.messages.editMessage);
   const deleteMessage = useMutation(api.messages.deleteMessage);
@@ -195,31 +212,110 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
     }
   }
 
+  // Long-press detection for mobile
+  const LONG_PRESS_DURATION = 500; // ms
+  const MOVE_THRESHOLD = 10; // px - cancel if finger moves too far
+
+  function handleTouchStart(e: React.TouchEvent) {
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+
+    longPressTimerRef.current = setTimeout(() => {
+      setShowMobileActions(true);
+    }, LONG_PRESS_DURATION);
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    if (!touchStartRef.current || !longPressTimerRef.current) return;
+
+    const touch = e.touches[0];
+    const dx = Math.abs(touch.clientX - touchStartRef.current.x);
+    const dy = Math.abs(touch.clientY - touchStartRef.current.y);
+
+    // Cancel if finger moved too far (user is scrolling)
+    if (dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }
+
+  function handleTouchEnd() {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    touchStartRef.current = null;
+  }
+
+  function closeMobileActions() {
+    setShowMobileActions(false);
+  }
+
+  // Close mobile actions when clicking outside
+  useEffect(() => {
+    if (!showMobileActions) return;
+
+    function handleClickOutside(e: MouseEvent | TouchEvent) {
+      if (messageContainerRef.current && !messageContainerRef.current.contains(e.target as Node)) {
+        setShowMobileActions(false);
+      }
+    }
+
+    // Small delay to prevent immediate close from the same touch event
+    const timeoutId = setTimeout(() => {
+      document.addEventListener("touchstart", handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
+    }, 10);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener("touchstart", handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showMobileActions]);
+
   const hoverToolbar = (
-    <div className="absolute -top-3 right-2 z-10 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-      <div className="flex rounded-md border border-zinc-700 bg-zinc-800 shadow-lg">
+    <div
+      className={`absolute -top-3 right-2 z-10 flex gap-0.5 transition-opacity ${
+        showMobileActions ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+      }`}
+      onClick={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+    >
+      <div className="flex rounded-md border border-border bg-overlay shadow-lg">
         {/* Emoji reaction button */}
         <div className="relative">
           <button
             type="button"
-            className="rounded-l-md px-1.5 py-0.5 text-sm hover:bg-zinc-700"
+            className="rounded-l-md px-1.5 py-0.5 text-sm hover:bg-active"
             onClick={() => setShowPicker((v) => !v)}
           >
             😀
           </button>
           {showPicker && (
             <EmojiPicker
-              onSelect={handleSelectEmoji}
-              onClose={() => setShowPicker(false)}
+              onSelect={(emoji) => { handleSelectEmoji(emoji); setShowPicker(false); closeMobileActions(); }}
+              onClose={() => { setShowPicker(false); closeMobileActions(); }}
             />
           )}
         </div>
+        {/* Reply button - for inline replies */}
+        {!message.parentMessageId && onReply && (
+          <button
+            type="button"
+            className="px-1.5 py-0.5 text-sm text-text-muted hover:bg-active hover:text-text"
+            onClick={() => { onReply(message); closeMobileActions(); }}
+            title="Reply"
+          >
+            ↩
+          </button>
+        )}
         {/* Reply in thread button - only for top-level messages */}
         {!message.parentMessageId && onReplyInThread && (
           <button
             type="button"
-            className="px-1.5 py-0.5 text-sm text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
-            onClick={() => onReplyInThread(message._id)}
+            className="px-1.5 py-0.5 text-sm text-text-muted hover:bg-active hover:text-text"
+            onClick={() => { onReplyInThread(message._id); closeMobileActions(); }}
             title="Reply in thread"
           >
             💬
@@ -229,10 +325,10 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
         {!message.parentMessageId && (
           <button
             type="button"
-            className={`px-1.5 py-0.5 text-sm hover:bg-zinc-700 ${
-              isPinned ? "text-amber-400 hover:text-amber-300" : "text-zinc-400 hover:text-zinc-200"
+            className={`px-1.5 py-0.5 text-sm hover:bg-active ${
+              isPinned ? "text-warning" : "text-text-muted hover:text-text"
             }`}
-            onClick={handleTogglePin}
+            onClick={() => { handleTogglePin(); closeMobileActions(); }}
             title={isPinned ? "Unpin message" : "Pin message"}
           >
             📌
@@ -241,10 +337,10 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
         {/* Bookmark button */}
         <button
           type="button"
-          className={`px-1.5 py-0.5 text-sm hover:bg-zinc-700 ${
-            isBookmarked ? "text-indigo-400" : "text-zinc-400 hover:text-zinc-200"
+          className={`px-1.5 py-0.5 text-sm hover:bg-active ${
+            isBookmarked ? "text-accent" : "text-text-muted hover:text-text"
           }`}
-          onClick={handleToggleBookmark}
+          onClick={() => { handleToggleBookmark(); closeMobileActions(); }}
           title={isBookmarked ? "Remove bookmark" : "Bookmark message"}
         >
           🔖
@@ -253,8 +349,8 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
         {isOwnMessage && (
           <button
             type="button"
-            className="px-1.5 py-0.5 text-sm text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
-            onClick={() => setIsEditing(true)}
+            className="px-1.5 py-0.5 text-sm text-text-muted hover:bg-active hover:text-text"
+            onClick={() => { setIsEditing(true); closeMobileActions(); }}
             title="Edit message"
           >
             ✏️
@@ -264,8 +360,8 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
         {isOwnMessage && (
           <button
             type="button"
-            className="rounded-r-md px-1.5 py-0.5 text-sm text-zinc-400 hover:bg-red-500/20 hover:text-red-400"
-            onClick={handleDelete}
+            className="rounded-r-md px-1.5 py-0.5 text-sm text-text-muted hover:bg-danger/20 hover:text-danger"
+            onClick={() => { handleDelete(); closeMobileActions(); }}
             title="Delete message"
           >
             🗑️
@@ -281,7 +377,7 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
         value={editText}
         onChange={(e) => setEditText(e.target.value)}
         onKeyDown={handleEditKeyDown}
-        className="w-full resize-none rounded border border-zinc-600 bg-zinc-700 px-2 py-1 text-sm text-zinc-100 outline-none focus:border-indigo-500"
+        className="w-full resize-none rounded border border-border-strong bg-overlay px-2 py-1 text-sm text-text outline-none focus:border-accent"
         maxLength={4000}
         rows={1}
         autoFocus
@@ -293,17 +389,17 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
         }}
       />
       <div className="mt-1 flex gap-2 text-xs">
-        <span className="text-zinc-500">
-          escape to <button type="button" className="text-indigo-400 hover:underline" onClick={handleEditCancel}>cancel</button>
-          {" · "}enter to <button type="button" className="text-indigo-400 hover:underline" onClick={handleEditSave}>save</button>
+        <span className="text-text-muted">
+          escape to <button type="button" className="text-accent hover:underline" onClick={handleEditCancel}>cancel</button>
+          {" · "}enter to <button type="button" className="text-accent hover:underline" onClick={handleEditSave}>save</button>
         </span>
       </div>
     </div>
   ) : (
-    <div className="text-sm text-zinc-300 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+    <div className="text-sm text-text-secondary [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
       <MessageText text={message.text} />
       {message.editedAt && (
-        <span className="ml-1 inline text-xs text-zinc-500">(edited)</span>
+        <span className="ml-1 inline text-xs text-text-muted">(edited)</span>
       )}
     </div>
   );
@@ -323,7 +419,7 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
   const threadIndicator = message.replyCount && message.replyCount > 0 && (
     <button
       type="button"
-      className="mt-1 flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 hover:underline"
+      className="mt-1 flex items-center gap-1 text-xs text-accent hover:text-accent-hover hover:underline"
       onClick={() => onReplyInThread?.(message._id)}
     >
       <span>💬</span>
@@ -334,20 +430,44 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
   );
 
   const pinIndicator = isPinned && (
-    <div className="text-xs text-amber-500/70">📌 Pinned</div>
+    <div className="text-xs text-warning/80">📌 Pinned</div>
   );
 
   const bookmarkIndicator = isBookmarked && (
-    <div className="text-xs text-indigo-500/70">🔖 Saved</div>
+    <div className="text-xs text-accent/80">🔖 Saved</div>
+  );
+
+  const replyReference = message.replyTo && (
+    <button
+      type="button"
+      className="mb-1 flex items-center gap-1 text-xs text-text-muted hover:text-text-secondary"
+      onClick={() => onScrollToMessage?.(message.replyTo!.messageId)}
+    >
+      <span className="text-text-faint">↩</span>
+      <span className="font-medium text-text-muted">@{message.replyTo.username}</span>
+      <span className="truncate text-text-muted">{truncateText(message.replyTo.text, 50)}</span>
+    </button>
   );
 
   // Action messages: * username does something *
   if (message.type === "action") {
     return (
-      <div className="group relative rounded py-0.5 pl-4 pr-2 hover:bg-zinc-800/30">
+      <div
+        ref={messageContainerRef}
+        className="group relative rounded py-0.5 pl-4 pr-2 hover:bg-hover"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+      >
         {hoverToolbar}
-        <div className="text-sm italic text-zinc-400">
-          <span className="font-medium text-zinc-300">{message.user.username}</span>{" "}
+        <div className="text-sm italic text-text-muted">
+          <span className="font-medium text-text-secondary">{message.user.username}</span>
+          {message.user.isBot && (
+            <span className="ml-1 rounded bg-accent-soft px-1 py-0.5 text-[10px] font-semibold uppercase text-accent">
+              BOT
+            </span>
+          )}{" "}
           <MessageText text={message.text} />
         </div>
         {attachmentCards}
@@ -363,23 +483,35 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
   // Poll messages
   if (message.type === "poll") {
     return (
-      <div className="group relative mt-3 flex gap-3 rounded py-1 pr-2 first:mt-0 hover:bg-zinc-800/30">
+      <div
+        ref={messageContainerRef}
+        className="group relative mt-3 flex gap-3 rounded py-1 pr-2 first:mt-0 hover:bg-hover"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+      >
         {hoverToolbar}
         <div
-          className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+          className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm"
           style={{ backgroundColor: message.user.avatarColor }}
         >
           {message.user.username[0].toUpperCase()}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
-            <span className="text-sm font-bold text-zinc-100">{message.user.username}</span>
+            <span className="text-sm font-bold text-text">{message.user.username}</span>
+            {message.user.isBot && (
+              <span className="rounded bg-accent-soft px-1 py-0.5 text-[10px] font-semibold uppercase text-accent">
+                BOT
+              </span>
+            )}
             {message.user.statusEmoji && (
               <span className="text-sm" title={message.user.statusText || undefined}>
                 {message.user.statusEmoji}
               </span>
             )}
-            <span className="text-xs text-zinc-500">{formatTimestamp(message._creationTime)}</span>
+            <span className="text-xs text-text-muted">{formatTimestamp(message._creationTime)}</span>
           </div>
           <PollMessage messageId={message._id} currentUserId={currentUserId} />
           <ReactionBar
@@ -394,10 +526,18 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
 
   if (isGrouped) {
     return (
-      <div className="group relative -mt-1 rounded py-0.5 pl-[52px] pr-2 hover:bg-zinc-800/30">
+      <div
+        ref={messageContainerRef}
+        className="group relative -mt-1 rounded py-0.5 pl-[52px] pr-2 hover:bg-hover"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+      >
         {!isEditing && hoverToolbar}
         {pinIndicator}
         {bookmarkIndicator}
+        {replyReference}
         {messageContent}
         {attachmentCards}
         {linkPreviewCards}
@@ -412,26 +552,39 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
   }
 
   return (
-    <div className="group relative mt-3 flex gap-3 rounded py-1 pr-2 first:mt-0 hover:bg-zinc-800/30">
+    <div
+      ref={messageContainerRef}
+      className="group relative mt-3 flex gap-3 rounded py-1 pr-2 first:mt-0 hover:bg-hover"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
+    >
       {!isEditing && hoverToolbar}
       <div
-        className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+        className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm"
         style={{ backgroundColor: message.user.avatarColor }}
       >
         {message.user.username[0].toUpperCase()}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
-          <span className="text-sm font-bold text-zinc-100">{message.user.username}</span>
+          <span className="text-sm font-bold text-text">{message.user.username}</span>
+          {message.user.isBot && (
+            <span className="rounded bg-accent-soft px-1 py-0.5 text-[10px] font-semibold uppercase text-accent">
+              BOT
+            </span>
+          )}
           {message.user.statusEmoji && (
             <span className="text-sm" title={message.user.statusText || undefined}>
               {message.user.statusEmoji}
             </span>
           )}
-          <span className="text-xs text-zinc-500">{formatTimestamp(message._creationTime)}</span>
+          <span className="text-xs text-text-muted">{formatTimestamp(message._creationTime)}</span>
         </div>
         {pinIndicator}
         {bookmarkIndicator}
+        {replyReference}
         {messageContent}
         {attachmentCards}
         {linkPreviewCards}

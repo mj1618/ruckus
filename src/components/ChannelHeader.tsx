@@ -32,11 +32,11 @@ export function ChannelHeader({ channel, onToggleSidebar, onToggleUsers, onToggl
   };
 
   return (
-    <div className="flex h-14 items-center border-b border-zinc-800 bg-zinc-900/50 px-4 backdrop-blur">
+    <div className="flex h-14 items-center border-b border-border bg-surface/80 px-4 backdrop-blur">
       {/* Mobile hamburger */}
       <button
         onClick={onToggleSidebar}
-        className="mr-3 text-zinc-400 hover:text-zinc-200 md:hidden"
+        className="mr-3 text-text-muted hover:text-text md:hidden"
       >
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -44,7 +44,7 @@ export function ChannelHeader({ channel, onToggleSidebar, onToggleUsers, onToggl
       </button>
 
       <div className="min-w-0 flex-1">
-        <h2 className="text-sm font-bold text-zinc-100"># {channel.name}</h2>
+        <h2 className="text-sm font-bold text-text"># {channel.name}</h2>
         {isEditingTopic ? (
           <input
             type="text"
@@ -56,7 +56,7 @@ export function ChannelHeader({ channel, onToggleSidebar, onToggleUsers, onToggl
               if (e.key === "Escape") setIsEditingTopic(false);
             }}
             autoFocus
-            className="w-full bg-transparent text-xs text-zinc-400 outline-none"
+            className="w-full bg-transparent text-xs text-text-muted outline-none"
             placeholder="Set a topic..."
           />
         ) : (
@@ -65,7 +65,7 @@ export function ChannelHeader({ channel, onToggleSidebar, onToggleUsers, onToggl
               setTopicInput(channel.topic ?? "");
               setIsEditingTopic(true);
             }}
-            className="truncate text-xs text-zinc-500 hover:text-zinc-400"
+            className="truncate text-xs text-text-muted hover:text-text-secondary"
           >
             {channel.topic || "No topic set — click to add one"}
           </button>
@@ -75,7 +75,7 @@ export function ChannelHeader({ channel, onToggleSidebar, onToggleUsers, onToggl
       {/* Search button */}
       <button
         onClick={onToggleSearch}
-        className={`ml-3 text-sm ${showSearch ? "text-indigo-400" : "text-zinc-400 hover:text-zinc-200"}`}
+        className={`ml-3 text-sm ${showSearch ? "text-accent" : "text-text-muted hover:text-text"}`}
         title="Search messages (⌘K)"
       >
         🔍
@@ -84,7 +84,7 @@ export function ChannelHeader({ channel, onToggleSidebar, onToggleUsers, onToggl
       {/* Saved messages button */}
       <button
         onClick={onToggleBookmarks}
-        className={`ml-3 text-sm ${showBookmarks ? "text-indigo-400" : "text-zinc-400 hover:text-zinc-200"}`}
+        className={`ml-3 text-sm ${showBookmarks ? "text-accent" : "text-text-muted hover:text-text"}`}
         title="Saved messages"
       >
         🔖
@@ -93,7 +93,7 @@ export function ChannelHeader({ channel, onToggleSidebar, onToggleUsers, onToggl
       {/* Pinned messages button */}
       <button
         onClick={onTogglePins}
-        className={`ml-3 text-sm ${showPins ? "text-amber-400" : "text-zinc-400 hover:text-zinc-200"}`}
+        className={`ml-3 text-sm ${showPins ? "text-warning" : "text-text-muted hover:text-text"}`}
         title="Pinned messages"
       >
         📌
@@ -102,7 +102,7 @@ export function ChannelHeader({ channel, onToggleSidebar, onToggleUsers, onToggl
       {/* Mobile users button */}
       <button
         onClick={onToggleUsers}
-        className="ml-3 text-zinc-400 hover:text-zinc-200 md:hidden"
+        className="ml-3 text-text-muted hover:text-text md:hidden"
       >
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />

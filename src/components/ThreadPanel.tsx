@@ -9,6 +9,7 @@ import { MessageItem } from "@/components/MessageItem";
 import { MessageInput } from "@/components/MessageInput";
 import { MessageText } from "@/components/MessageText";
 import { LinkPreview } from "@/components/LinkPreview";
+import { MessageAttachments } from "@/components/MessageAttachments";
 
 interface ThreadPanelProps {
   parentMessageId: Id<"messages">;
@@ -79,15 +80,15 @@ export function ThreadPanel({ parentMessageId, channelId, channelName, onClose }
 
   if (threadData === undefined) {
     return (
-      <div className="flex h-full flex-col border-l border-zinc-800 bg-zinc-900">
-        <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-          <h3 className="text-sm font-bold text-zinc-100">Thread</h3>
-          <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-200">
+      <div className="flex h-full flex-col border-l border-border bg-surface">
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <h3 className="text-sm font-bold text-text">Thread</h3>
+          <button type="button" onClick={onClose} className="text-text-muted hover:text-text">
             ✕
           </button>
         </div>
         <div className="flex flex-1 items-center justify-center">
-          <p className="text-sm text-zinc-500">Loading...</p>
+          <p className="text-sm text-text-muted">Loading...</p>
         </div>
       </div>
     );
@@ -95,15 +96,15 @@ export function ThreadPanel({ parentMessageId, channelId, channelName, onClose }
 
   if (threadData === null) {
     return (
-      <div className="flex h-full flex-col border-l border-zinc-800 bg-zinc-900">
-        <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-          <h3 className="text-sm font-bold text-zinc-100">Thread</h3>
-          <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-200">
+      <div className="flex h-full flex-col border-l border-border bg-surface">
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <h3 className="text-sm font-bold text-text">Thread</h3>
+          <button type="button" onClick={onClose} className="text-text-muted hover:text-text">
             ✕
           </button>
         </div>
         <div className="flex flex-1 items-center justify-center">
-          <p className="text-sm text-zinc-500">Message not found</p>
+          <p className="text-sm text-text-muted">Message not found</p>
         </div>
       </div>
     );
@@ -112,11 +113,11 @@ export function ThreadPanel({ parentMessageId, channelId, channelName, onClose }
   const { parent, replies } = threadData;
 
   return (
-    <div className="flex h-full flex-col border-l border-zinc-800 bg-zinc-900">
+    <div className="flex h-full flex-col border-l border-border bg-surface">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-        <h3 className="text-sm font-bold text-zinc-100">Thread</h3>
-        <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-200">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <h3 className="text-sm font-bold text-text">Thread</h3>
+        <button type="button" onClick={onClose} className="text-text-muted hover:text-text">
           ✕
         </button>
       </div>
@@ -124,25 +125,28 @@ export function ThreadPanel({ parentMessageId, channelId, channelName, onClose }
       {/* Scrollable content */}
       <div ref={containerRef} className="flex-1 overflow-y-auto">
         {/* Parent message - read-only display */}
-        <div className="border-b border-zinc-800 p-4">
+        <div className="border-b border-border p-4">
           <div className="flex gap-3">
             <div
-              className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+              className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm"
               style={{ backgroundColor: parent.user.avatarColor }}
             >
               {parent.user.username[0].toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline gap-2">
-                <span className="text-sm font-bold text-zinc-100">{parent.user.username}</span>
-                <span className="text-xs text-zinc-500">{formatTimestamp(parent._creationTime)}</span>
+                <span className="text-sm font-bold text-text">{parent.user.username}</span>
+                <span className="text-xs text-text-muted">{formatTimestamp(parent._creationTime)}</span>
               </div>
-              <div className="text-sm text-zinc-300 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+              <div className="text-sm text-text-secondary [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
                 <MessageText text={parent.text} />
                 {parent.editedAt && (
-                  <span className="ml-1 inline text-xs text-zinc-500">(edited)</span>
+                  <span className="ml-1 inline text-xs text-text-muted">(edited)</span>
                 )}
               </div>
+              {parent.attachments && parent.attachments.length > 0 && (
+                <MessageAttachments attachments={parent.attachments} />
+              )}
               {previewsByMessageId.get(parent._id)?.filter((p) => p.title || p.description).map((preview) => (
                 <LinkPreview key={preview.url} preview={preview} />
               ))}
@@ -153,7 +157,7 @@ export function ThreadPanel({ parentMessageId, channelId, channelName, onClose }
         {/* Replies */}
         <div className="p-4">
           {replies.length > 0 && (
-            <div className="mb-2 text-xs text-zinc-500">
+            <div className="mb-2 text-xs text-text-muted">
               {replies.length} {replies.length === 1 ? "reply" : "replies"}
             </div>
           )}
@@ -179,7 +183,7 @@ export function ThreadPanel({ parentMessageId, channelId, channelName, onClose }
       </div>
 
       {/* Reply input */}
-      <div className="border-t border-zinc-800 px-4 pb-4 pt-2">
+      <div className="border-t border-border px-4 pb-4 pt-2">
         <MessageInput channelId={channelId} channelName={channelName} parentMessageId={parentMessageId} placeholder="Reply in thread..." />
       </div>
     </div>

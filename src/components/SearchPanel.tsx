@@ -38,7 +38,7 @@ function highlightText(text: string, query: string): React.ReactNode {
   const parts = truncated.split(regex);
   return parts.map((part, i) =>
     i % 2 === 1 ? (
-      <mark key={i} className="rounded bg-yellow-500/30 px-0.5 text-yellow-200">
+      <mark key={i} className="rounded bg-warning/30 px-0.5 text-warning">
         {part}
       </mark>
     ) : (
@@ -62,23 +62,23 @@ export function SearchPanel({ onClose, onNavigateToChannel }: SearchPanelProps) 
   );
 
   return (
-    <div className="flex h-full flex-col border-l border-zinc-800 bg-zinc-900">
+    <div className="flex h-full flex-col border-l border-border bg-surface">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-        <h3 className="text-sm font-bold text-zinc-100">🔍 Search</h3>
-        <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-200">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <h3 className="text-sm font-bold text-text">🔍 Search</h3>
+        <button type="button" onClick={onClose} className="text-text-muted hover:text-text">
           ✕
         </button>
       </div>
 
       {/* Search input */}
-      <div className="border-b border-zinc-800 px-4 py-3">
+      <div className="border-b border-border px-4 py-3">
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           autoFocus
-          className="w-full rounded bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:ring-1 focus:ring-indigo-500"
+          className="w-full rounded bg-overlay px-3 py-1.5 text-sm text-text placeholder-text-muted outline-none focus:ring-1 focus:ring-accent"
           placeholder="Search messages..."
         />
       </div>
@@ -87,45 +87,45 @@ export function SearchPanel({ onClose, onNavigateToChannel }: SearchPanelProps) 
       <div className="flex-1 overflow-y-auto">
         {debouncedQuery.trim().length === 0 ? (
           <div className="flex flex-col items-center justify-center p-8">
-            <p className="text-sm text-zinc-500">Search across all channels</p>
-            <p className="mt-1 text-xs text-zinc-600">⌘K to toggle search</p>
+            <p className="text-sm text-text-muted">Search across all channels</p>
+            <p className="mt-1 text-xs text-text-faint">⌘K to toggle search</p>
           </div>
         ) : results === undefined ? (
           <div className="flex items-center justify-center p-8">
-            <p className="text-sm text-zinc-500">Searching...</p>
+            <p className="text-sm text-text-muted">Searching...</p>
           </div>
         ) : results.length === 0 ? (
           <div className="flex items-center justify-center p-8">
-            <p className="text-sm text-zinc-500">No messages match your search</p>
+            <p className="text-sm text-text-muted">No messages match your search</p>
           </div>
         ) : (
-          <div className="divide-y divide-zinc-800">
+          <div className="divide-y divide-border">
             {results.map((result) => (
               <button
                 key={result._id}
                 type="button"
-                className="w-full p-4 text-left transition-colors hover:bg-zinc-800/50"
+                className="w-full p-4 text-left transition-colors hover:bg-hover"
                 onClick={() => onNavigateToChannel(result.channelId)}
               >
                 <div className="mb-1">
-                  <span className="inline-block rounded bg-indigo-500/20 px-1.5 py-0.5 text-xs font-medium text-indigo-300">
+                  <span className="inline-block rounded bg-accent-soft px-1.5 py-0.5 text-xs font-medium text-accent">
                     #{result.channelName}
                   </span>
                   {result.parentMessageId && (
-                    <span className="ml-1.5 text-xs text-zinc-600">in thread</span>
+                    <span className="ml-1.5 text-xs text-text-faint">in thread</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
                   <div
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-sm"
                     style={{ backgroundColor: result.avatarColor }}
                   >
                     {result.username[0].toUpperCase()}
                   </div>
-                  <span className="text-xs font-medium text-zinc-300">{result.username}</span>
-                  <span className="text-xs text-zinc-600">{formatTimestamp(result._creationTime)}</span>
+                  <span className="text-xs font-medium text-text-secondary">{result.username}</span>
+                  <span className="text-xs text-text-faint">{formatTimestamp(result._creationTime)}</span>
                 </div>
-                <p className="mt-1 text-sm leading-relaxed text-zinc-400">
+                <p className="mt-1 text-sm leading-relaxed text-text-muted">
                   {highlightText(result.text, debouncedQuery)}
                 </p>
               </button>

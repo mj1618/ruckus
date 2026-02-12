@@ -27,8 +27,8 @@ export function PollMessage({ messageId, currentUserId }: PollMessageProps) {
   }
 
   return (
-    <div className="my-1 max-w-md rounded-lg border border-zinc-700 bg-zinc-800/50 p-3">
-      <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-zinc-100">
+    <div className="my-1 max-w-md rounded-lg border border-border bg-overlay/50 p-3">
+      <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-text">
         <span>📊</span>
         <span>{poll.question}</span>
       </div>
@@ -45,20 +45,20 @@ export function PollMessage({ messageId, currentUserId }: PollMessageProps) {
               onClick={() => handleVote(i)}
               className={`relative w-full overflow-hidden rounded-md border px-3 py-2 text-left text-sm transition-colors ${
                 isVoted
-                  ? "border-indigo-500/50 bg-indigo-500/10"
-                  : "border-zinc-700 hover:border-zinc-600"
+                  ? "border-accent/50 bg-accent-soft"
+                  : "border-border hover:border-border-strong"
               }`}
             >
               <div
-                className="absolute inset-y-0 left-0 bg-indigo-500/20 transition-all duration-500 ease-out"
+                className="absolute inset-y-0 left-0 bg-accent/20 transition-all duration-500 ease-out"
                 style={{ width: `${pct}%` }}
               />
               <div className="relative flex items-center justify-between">
-                <span className={isVoted ? "font-medium text-indigo-300" : "text-zinc-300"}>
+                <span className={isVoted ? "font-medium text-accent" : "text-text-secondary"}>
                   {option.text}
-                  {isVoted && <span className="ml-2 text-xs text-indigo-400">✓ You</span>}
+                  {isVoted && <span className="ml-2 text-xs text-accent">✓ You</span>}
                 </span>
-                <span className="ml-2 text-xs text-zinc-500">
+                <span className="ml-2 text-xs text-text-muted">
                   {pct}% ({option.votes})
                 </span>
               </div>
@@ -67,7 +67,7 @@ export function PollMessage({ messageId, currentUserId }: PollMessageProps) {
         })}
       </div>
 
-      <div className="mt-2 text-xs text-zinc-500">
+      <div className="mt-2 text-xs text-text-muted">
         {totalVotes} {totalVotes === 1 ? "vote" : "votes"} · Created by {poll.createdBy}
       </div>
     </div>
