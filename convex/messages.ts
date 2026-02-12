@@ -103,7 +103,7 @@ export const getMessages = query({
         .filter((u) => u !== null)
         .map((u) => [
           u._id,
-          { _id: u._id, username: u.username, avatarColor: u.avatarColor },
+          { _id: u._id, username: u.username, avatarColor: u.avatarColor, statusEmoji: u.statusEmoji, statusText: u.statusText },
         ])
     );
 
@@ -132,6 +132,8 @@ export const getMessages = query({
             _id: u._id,
             username: u.username,
             avatarColor: u.avatarColor,
+            statusEmoji: u.statusEmoji,
+            statusText: u.statusText,
           });
         }
       }
@@ -211,7 +213,7 @@ export const getThreadMessages = query({
         .filter((u) => u !== null)
         .map((u) => [
           u._id,
-          { _id: u._id, username: u.username, avatarColor: u.avatarColor },
+          { _id: u._id, username: u.username, avatarColor: u.avatarColor, statusEmoji: u.statusEmoji, statusText: u.statusText },
         ])
     );
 
@@ -220,6 +222,8 @@ export const getThreadMessages = query({
         _id: parentUser._id,
         username: parentUser.username,
         avatarColor: parentUser.avatarColor,
+        statusEmoji: parentUser.statusEmoji,
+        statusText: parentUser.statusText,
       });
     }
 
@@ -249,6 +253,8 @@ export const getThreadMessages = query({
             _id: u._id,
             username: u.username,
             avatarColor: u.avatarColor,
+            statusEmoji: u.statusEmoji,
+            statusText: u.statusText,
           });
         }
       }

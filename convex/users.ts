@@ -76,6 +76,8 @@ export const getOnlineUsers = query({
         username: u.username,
         avatarColor: u.avatarColor,
         lastSeen: u.lastSeen,
+        statusEmoji: u.statusEmoji,
+        statusText: u.statusText,
       }));
   },
 });
@@ -96,6 +98,32 @@ export const changeUsername = mutation({
       throw new Error("Username already taken");
     }
     await ctx.db.patch("users", args.userId, { username });
+  },
+});
+
+export const setStatus = mutation({
+  args: {
+    userId: v.id("users"),
+    statusEmoji: v.optional(v.string()),
+    statusText: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const emoji = args.statusEmoji?.slice(0, 10) || undefined;
+    const text = args.statusText?.slice(0, 100) || undefined;
+    await ctx.db.patch("users", args.userId, {
+      statusEmoji: emoji,
+      statusText: text,
+    });
+  },
+});
+
+export const clearStatus = mutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch("users", args.userId, {
+      statusEmoji: undefined,
+      statusText: undefined,
+    });
   },
 });
 

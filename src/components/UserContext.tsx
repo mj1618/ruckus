@@ -11,6 +11,8 @@ interface UserContextType {
     _id: Id<"users">;
     username: string;
     avatarColor: string;
+    statusEmoji?: string;
+    statusText?: string;
   } | null;
   sessionId: string;
   join: (username: string) => Promise<void>;
@@ -42,6 +44,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         _id: currentUser._id,
         username: currentUser.username,
         avatarColor: currentUser.avatarColor,
+        statusEmoji: currentUser.statusEmoji,
+        statusText: currentUser.statusText,
       }
     : null;
 

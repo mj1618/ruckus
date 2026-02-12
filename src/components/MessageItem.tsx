@@ -22,6 +22,8 @@ interface MessageItemProps {
       _id: Id<"users">;
       username: string;
       avatarColor: string;
+      statusEmoji?: string;
+      statusText?: string;
     };
     reactions: Array<{
       emoji: string;
@@ -288,6 +290,56 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
     <div className="text-xs text-amber-500/70">📌 Pinned</div>
   );
 
+  // Action messages: * username does something *
+  if (message.type === "action") {
+    return (
+      <div className="group relative rounded py-0.5 pl-4 pr-2 hover:bg-zinc-800/30">
+        {hoverToolbar}
+        <div className="text-sm italic text-zinc-400">
+          <span className="font-medium text-zinc-300">{message.user.username}</span>{" "}
+          <MessageText text={message.text} />
+        </div>
+        <ReactionBar
+          reactions={message.reactions}
+          currentUserId={currentUserId}
+          messageId={message._id}
+        />
+      </div>
+    );
+  }
+
+  // Poll messages
+  if (message.type === "poll") {
+    return (
+      <div className="group relative mt-3 flex gap-3 rounded py-1 pr-2 first:mt-0 hover:bg-zinc-800/30">
+        {hoverToolbar}
+        <div
+          className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+          style={{ backgroundColor: message.user.avatarColor }}
+        >
+          {message.user.username[0].toUpperCase()}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2">
+            <span className="text-sm font-bold text-zinc-100">{message.user.username}</span>
+            {message.user.statusEmoji && (
+              <span className="text-sm" title={message.user.statusText || undefined}>
+                {message.user.statusEmoji}
+              </span>
+            )}
+            <span className="text-xs text-zinc-500">{formatTimestamp(message._creationTime)}</span>
+          </div>
+          <PollMessage messageId={message._id} currentUserId={currentUserId} />
+          <ReactionBar
+            reactions={message.reactions}
+            currentUserId={currentUserId}
+            messageId={message._id}
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (isGrouped) {
     return (
       <div className="group relative -mt-1 rounded py-0.5 pl-[52px] pr-2 hover:bg-zinc-800/30">
@@ -316,6 +368,11 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
           <span className="text-sm font-bold text-zinc-100">{message.user.username}</span>
+          {message.user.statusEmoji && (
+            <span className="text-sm" title={message.user.statusText || undefined}>
+              {message.user.statusEmoji}
+            </span>
+          )}
           <span className="text-xs text-zinc-500">{formatTimestamp(message._creationTime)}</span>
         </div>
         {pinIndicator}

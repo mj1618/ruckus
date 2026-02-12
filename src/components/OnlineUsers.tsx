@@ -29,7 +29,15 @@ export function OnlineUsers() {
               </div>
               <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-zinc-900 bg-green-500" />
             </div>
-            <span className="truncate text-sm text-zinc-300">{user.username}</span>
+            <div className="min-w-0 flex-1">
+              <span className="truncate text-sm text-zinc-300">{user.username}</span>
+              {(user.statusEmoji || user.statusText) && (
+                <div className="truncate text-xs text-zinc-500">
+                  {user.statusEmoji && <span>{user.statusEmoji} </span>}
+                  {user.statusText}
+                </div>
+              )}
+            </div>
           </div>
         ))}
       </div>

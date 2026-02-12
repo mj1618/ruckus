@@ -10,6 +10,8 @@ const schema = defineSchema({
     sessionId: v.string(),
     avatarColor: v.string(),
     lastSeen: v.number(),
+    statusEmoji: v.optional(v.string()),
+    statusText: v.optional(v.string()),
   })
     .index("by_sessionId", ["sessionId"])
     .index("by_username", ["username"]),

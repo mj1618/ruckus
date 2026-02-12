@@ -25,6 +25,8 @@ export function MessageInput({ channelId, channelName, parentMessageId, placehol
   const sendMessage = useMutation(api.messages.sendMessage);
   const createPoll = useMutation(api.polls.createPoll);
   const changeUsername = useMutation(api.users.changeUsername);
+  const setUserStatus = useMutation(api.users.setStatus);
+  const clearUserStatus = useMutation(api.users.clearStatus);
   const setTyping = useMutation(api.typing.setTyping);
   const clearTyping = useMutation(api.typing.clearTyping);
 
@@ -117,6 +119,36 @@ export function MessageInput({ channelId, channelName, parentMessageId, placehol
         const newName = trimmed.slice(6).trim();
         if (!newName) throw new Error("/nick requires a username");
         await changeUsername({ userId: user._id, newUsername: newName });
+      } else if (trimmed.toLowerCase() === "/status" || trimmed.toLowerCase().startsWith("/status ")) {
+        const statusStr = trimmed.slice(7).trim();
+        if (!statusStr) {
+          await clearUserStatus({ userId: user._id });
+        } else {
+          const parts = statusStr.split(/\s+/);
+          const firstPart = parts[0];
+          const isEmoji = firstPart && firstPart.length <= 4 && /[^\x00-\x7F]/.test(firstPart);
+          if (isEmoji) {
+            await setUserStatus({
+              userId: user._id,
+              statusEmoji: firstPart,
+              statusText: parts.slice(1).join(" ") || undefined,
+            });
+          } else {
+            await setUserStatus({
+              userId: user._id,
+              statusText: statusStr,
+            });
+          }
+        }
+        // Send action message about status change
+        await sendMessage({
+          channelId,
+          userId: user._id,
+          text: statusStr
+            ? `/me set their status to ${statusStr}`
+            : "/me cleared their status",
+          ...(parentMessageId ? { parentMessageId } : {}),
+        });
       } else {
         // /me and /shrug are handled server-side; everything else is a normal message
         await sendMessage({

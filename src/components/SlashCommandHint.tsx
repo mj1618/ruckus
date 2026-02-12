@@ -5,6 +5,7 @@ const SLASH_COMMANDS = [
   { command: "/me", args: "action", description: "Express an action" },
   { command: "/shrug", args: "[text]", description: "Append ¯\\_(ツ)_/¯" },
   { command: "/nick", args: "newname", description: "Change your display name" },
+  { command: "/status", args: "[emoji] [text]", description: "Set your status" },
 ];
 
 interface SlashCommandHintProps {
