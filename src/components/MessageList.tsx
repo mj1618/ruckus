@@ -54,6 +54,11 @@ export function MessageList({ channelId, onReplyInThread }: MessageListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const prevLengthRef = useRef(0);
 
+  // Reset scroll state when switching channels so we scroll to bottom on entry
+  useEffect(() => {
+    prevLengthRef.current = 0;
+  }, [channelId]);
+
   useEffect(() => {
     if (!messages) return;
     const container = containerRef.current;
