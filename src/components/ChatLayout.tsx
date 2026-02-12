@@ -15,6 +15,8 @@ import { ThreadPanel } from "@/components/ThreadPanel";
 import { PinnedMessages } from "@/components/PinnedMessages";
 import { SearchPanel } from "@/components/SearchPanel";
 import { SearchPalette } from "@/components/SearchPalette";
+import { NotificationPermission } from "@/components/NotificationPermission";
+import { useNotifications } from "@/hooks/useNotifications";
 
 export function ChatLayout() {
   const [activeChannelId, setActiveChannelId] = useState<Id<"channels"> | null>(null);
@@ -61,6 +63,12 @@ export function ChatLayout() {
       markRead({ userId: user._id, channelId: activeChannelId });
     }
   }, [activeChannelId, user]);
+
+  const { permissionState, requestPermission, dismissed, dismiss } = useNotifications(
+    user?._id,
+    user?.username,
+    activeChannelId
+  );
 
   const activeChannel = channels?.find((c) => c._id === activeChannelId) ?? null;
 
@@ -119,6 +127,12 @@ export function ChatLayout() {
                 }
               }}
               showSearch={showSearch}
+            />
+            <NotificationPermission
+              permissionState={permissionState}
+              dismissed={dismissed}
+              onRequestPermission={requestPermission}
+              onDismiss={dismiss}
             />
             <MessageList channelId={activeChannel._id} onReplyInThread={(messageId) => {
               setActiveThreadId(messageId);

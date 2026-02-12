@@ -5,6 +5,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { useUser } from "@/components/UserContext";
+import { StatusPicker } from "@/components/StatusPicker";
 
 interface ChannelSidebarProps {
   activeChannelId: Id<"channels"> | null;
@@ -26,6 +27,7 @@ export function ChannelSidebar({ activeChannelId, onSelectChannel }: ChannelSide
   const [isCreating, setIsCreating] = useState(false);
   const [newChannelName, setNewChannelName] = useState("");
   const [error, setError] = useState("");
+  const [showStatusPicker, setShowStatusPicker] = useState(false);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,24 +110,37 @@ export function ChannelSidebar({ activeChannelId, onSelectChannel }: ChannelSide
         )}
       </div>
 
-      {/* Footer - current user */}
+      {/* Footer - current user with status */}
       {user && (
-        <div className="border-t border-zinc-800 px-4 py-3">
-          <div className="flex items-center gap-2">
+        <div className="relative border-t border-zinc-800 px-3 py-2">
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-zinc-800"
+            onClick={() => setShowStatusPicker(v => !v)}
+          >
             <div
-              className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white"
               style={{ backgroundColor: user.avatarColor }}
             >
               {user.username[0].toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-zinc-100">{user.username}</p>
-              <div className="flex items-center gap-1">
-                <div className="h-2 w-2 rounded-full bg-green-500" />
-                <span className="text-xs text-zinc-500">Online</span>
+              <div className="truncate text-sm font-medium text-zinc-200">{user.username}</div>
+              <div className="truncate text-xs text-zinc-500">
+                {user.statusEmoji || user.statusText
+                  ? `${user.statusEmoji || ""} ${user.statusText || ""}`.trim()
+                  : "Set a status"}
               </div>
             </div>
-          </div>
+          </button>
+          {showStatusPicker && (
+            <StatusPicker
+              userId={user._id}
+              currentEmoji={user.statusEmoji}
+              currentText={user.statusText}
+              onClose={() => setShowStatusPicker(false)}
+            />
+          )}
         </div>
       )}
     </div>

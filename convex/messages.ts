@@ -340,6 +340,46 @@ export const editMessage = mutation({
   },
 });
 
+export const getRecentMentions = query({
+  args: {
+    userId: v.id("users"),
+    since: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get("users", args.userId);
+    if (!user) return [];
+
+    const results = await ctx.db
+      .query("messages")
+      .withSearchIndex("search_text", (q) =>
+        q.search("text", `@${user.username}`)
+      )
+      .take(20);
+
+    const filtered = results.filter(
+      (m) => m._creationTime > args.since && m.userId !== args.userId
+    );
+
+    const channelIds = [...new Set(filtered.map((m) => m.channelId))];
+    const channels = await Promise.all(
+      channelIds.map((id) => ctx.db.get("channels", id))
+    );
+    const channelMap = new Map(
+      channels
+        .filter((c) => c !== null)
+        .map((c) => [c._id, c.name])
+    );
+
+    return filtered.map((m) => ({
+      _id: m._id,
+      channelId: m.channelId,
+      channelName: channelMap.get(m.channelId) ?? "unknown",
+      text: m.text,
+      _creationTime: m._creationTime,
+    }));
+  },
+});
+
 export const deleteMessage = mutation({
   args: {
     messageId: v.id("messages"),
