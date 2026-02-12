@@ -138,7 +138,7 @@ export const login = mutation({
       .unique();
 
     if (!user) {
-      throw new Error("Invalid username or password");
+      throw new Error("No account found with that username");
     }
 
     if (!user.passwordHash || !user.passwordSalt) {
@@ -147,7 +147,7 @@ export const login = mutation({
 
     const hash = await hashPassword(args.password, user.passwordSalt);
     if (hash !== user.passwordHash) {
-      throw new Error("Invalid username or password");
+      throw new Error("Incorrect password");
     }
 
     // Transfer session to this user
