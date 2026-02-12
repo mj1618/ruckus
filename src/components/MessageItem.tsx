@@ -6,6 +6,7 @@ import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { MessageText } from "@/components/MessageText";
+import { PollMessage } from "@/components/PollMessage";
 
 interface MessageItemProps {
   message: {
@@ -16,6 +17,7 @@ interface MessageItemProps {
     replyCount?: number;
     latestReplyTime?: number;
     parentMessageId?: Id<"messages">;
+    type?: "action" | "poll" | "system";
     user: {
       _id: Id<"users">;
       username: string;

@@ -13,12 +13,16 @@ import { TypingIndicator } from "@/components/TypingIndicator";
 import { OnlineUsers } from "@/components/OnlineUsers";
 import { ThreadPanel } from "@/components/ThreadPanel";
 import { PinnedMessages } from "@/components/PinnedMessages";
+import { SearchPanel } from "@/components/SearchPanel";
+import { SearchPalette } from "@/components/SearchPalette";
 
 export function ChatLayout() {
   const [activeChannelId, setActiveChannelId] = useState<Id<"channels"> | null>(null);
   const [activeThreadId, setActiveThreadId] = useState<Id<"messages"> | null>(null);
   const [showPinnedMessages, setShowPinnedMessages] = useState(false);
-  const [mobileView, setMobileView] = useState<"sidebar" | "chat" | "users" | "thread" | "pins">("chat");
+  const [showSearch, setShowSearch] = useState(false);
+  const [showSearchPalette, setShowSearchPalette] = useState(false);
+  const [mobileView, setMobileView] = useState<"sidebar" | "chat" | "users" | "thread" | "pins" | "search">("chat");
 
   const { user } = useUser();
   const channels = useQuery(api.channels.listChannels);
@@ -32,10 +36,23 @@ export function ChatLayout() {
     }
   }, [channels, activeChannelId]);
 
-  // Close thread and pins panel when switching channels
+  // Ctrl/Cmd+K to toggle search palette
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setShowSearchPalette((v) => !v);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // Close thread, pins, and search panels when switching channels
   useEffect(() => {
     setActiveThreadId(null);
     setShowPinnedMessages(false);
+    setShowSearch(false);
   }, [activeChannelId]);
 
   // Mark channel as read when switching channels
@@ -93,6 +110,15 @@ export function ChatLayout() {
                 }
               }}
               showPins={showPinnedMessages}
+              onToggleSearch={() => {
+                setShowSearch((v) => !v);
+                if (!showSearch) {
+                  setMobileView("search");
+                } else if (mobileView === "search") {
+                  setMobileView("chat");
+                }
+              }}
+              showSearch={showSearch}
             />
             <MessageList channelId={activeChannel._id} onReplyInThread={(messageId) => {
               setActiveThreadId(messageId);
@@ -110,21 +136,21 @@ export function ChatLayout() {
         )}
       </div>
 
-      {/* Right panel - Thread, Pinned Messages, or Online Users */}
+      {/* Right panel - Thread, Pinned Messages, Search, or Online Users */}
       <div
         className={`${
-          mobileView === "users" || mobileView === "thread" || mobileView === "pins"
+          mobileView === "users" || mobileView === "thread" || mobileView === "pins" || mobileView === "search"
             ? "fixed inset-0 z-40 flex justify-end"
             : "hidden"
         } md:relative md:block md:z-auto`}
       >
-        {(mobileView === "users" || mobileView === "thread" || mobileView === "pins") && (
+        {(mobileView === "users" || mobileView === "thread" || mobileView === "pins" || mobileView === "search") && (
           <div
             className="fixed inset-0 bg-black/50 md:hidden"
             onClick={() => setMobileView("chat")}
           />
         )}
-        <div className={`relative z-50 h-full ${activeThreadId || showPinnedMessages ? "w-80" : "w-56"}`}>
+        <div className={`relative z-50 h-full ${activeThreadId || showPinnedMessages || showSearch ? "w-80" : "w-56"}`}>
           {activeThreadId && activeChannel ? (
             <ThreadPanel
               parentMessageId={activeThreadId}
@@ -143,11 +169,35 @@ export function ChatLayout() {
                 if (mobileView === "pins") setMobileView("chat");
               }}
             />
+          ) : showSearch ? (
+            <SearchPanel
+              onClose={() => {
+                setShowSearch(false);
+                if (mobileView === "search") setMobileView("chat");
+              }}
+              onNavigateToChannel={(channelId) => {
+                setActiveChannelId(channelId);
+                setShowSearch(false);
+                setMobileView("chat");
+              }}
+            />
           ) : (
             <OnlineUsers />
           )}
         </div>
       </div>
+
+      {/* Search Palette Modal (Cmd+K) */}
+      <SearchPalette
+        open={showSearchPalette}
+        onClose={() => setShowSearchPalette(false)}
+        channels={channels ?? []}
+        onSelectChannel={(channelId) => {
+          setActiveChannelId(channelId);
+          setShowSearchPalette(false);
+          setMobileView("chat");
+        }}
+      />
     </div>
   );
 }

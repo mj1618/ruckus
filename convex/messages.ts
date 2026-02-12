@@ -17,6 +17,25 @@ export const sendMessage = mutation({
       throw new Error("Message cannot exceed 4000 characters");
     }
 
+    // Handle slash commands
+    let messageText = text;
+    let messageType: "action" | undefined = undefined;
+
+    if (text.startsWith("/")) {
+      const spaceIndex = text.indexOf(" ");
+      const command = (spaceIndex === -1 ? text : text.slice(0, spaceIndex)).toLowerCase();
+
+      if (command === "/me") {
+        const actionText = text.slice(4).trim();
+        if (!actionText) throw new Error("/me requires action text");
+        messageText = actionText;
+        messageType = "action";
+      } else if (command === "/shrug") {
+        const prefix = text.slice(6).trim();
+        messageText = prefix ? `${prefix} ¯\\_(ツ)_/¯` : "¯\\_(ツ)_/¯";
+      }
+    }
+
     let channelId = args.channelId;
     if (args.parentMessageId) {
       const parent = await ctx.db.get("messages", args.parentMessageId);
@@ -37,7 +56,8 @@ export const sendMessage = mutation({
     await ctx.db.insert("messages", {
       channelId,
       userId: args.userId,
-      text,
+      text: messageText,
+      ...(messageType ? { type: messageType } : {}),
       ...(args.parentMessageId
         ? { parentMessageId: args.parentMessageId }
         : {}),
@@ -150,6 +170,7 @@ export const getMessages = query({
         editedAt: m.editedAt,
         replyCount: m.replyCount,
         latestReplyTime: m.latestReplyTime,
+        type: m.type,
         user: userMap.get(m.userId) ?? {
           _id: m.userId,
           username: "Unknown",
@@ -261,6 +282,7 @@ export const getThreadMessages = query({
         editedAt: m!.editedAt,
         replyCount: m!.replyCount,
         parentMessageId: m!.parentMessageId,
+        type: m!.type,
         user: userMap.get(m!.userId) ?? {
           _id: m!.userId,
           username: "Unknown",

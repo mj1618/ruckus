@@ -6,6 +6,7 @@ import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { useUser } from "@/components/UserContext";
 import { MentionAutocomplete } from "@/components/MentionAutocomplete";
+import { SlashCommandHint, SLASH_COMMANDS } from "@/components/SlashCommandHint";
 
 interface MessageInputProps {
   channelId: Id<"channels">;
@@ -22,10 +23,18 @@ export function MessageInput({ channelId, channelName, parentMessageId, placehol
   const lastTypingRef = useRef(0);
 
   const sendMessage = useMutation(api.messages.sendMessage);
+  const createPoll = useMutation(api.polls.createPoll);
+  const changeUsername = useMutation(api.users.changeUsername);
   const setTyping = useMutation(api.typing.setTyping);
   const clearTyping = useMutation(api.typing.clearTyping);
 
   const onlineUsers = useQuery(api.users.getOnlineUsers);
+
+  const [slashState, setSlashState] = useState<{
+    active: boolean;
+    query: string;
+    selectedIndex: number;
+  } | null>(null);
 
   const [mentionState, setMentionState] = useState<{
     active: boolean;
@@ -88,13 +97,35 @@ export function MessageInput({ channelId, channelName, parentMessageId, placehol
     setIsSending(true);
     setText("");
     setMentionState(null);
+    setSlashState(null);
     try {
-      await sendMessage({
-        channelId,
-        userId: user._id,
-        text: trimmed,
-        ...(parentMessageId ? { parentMessageId } : {}),
-      });
+      // Handle /poll command
+      if (trimmed.toLowerCase().startsWith("/poll ")) {
+        const rest = trimmed.slice(6);
+        const parts = rest.split("|").map((s) => s.trim()).filter(Boolean);
+        if (parts.length < 3) {
+          throw new Error("Format: /poll Question | Option 1 | Option 2");
+        }
+        const [question, ...options] = parts;
+        await createPoll({
+          channelId,
+          userId: user._id,
+          question,
+          options,
+        });
+      } else if (trimmed.toLowerCase().startsWith("/nick ")) {
+        const newName = trimmed.slice(6).trim();
+        if (!newName) throw new Error("/nick requires a username");
+        await changeUsername({ userId: user._id, newUsername: newName });
+      } else {
+        // /me and /shrug are handled server-side; everything else is a normal message
+        await sendMessage({
+          channelId,
+          userId: user._id,
+          text: trimmed,
+          ...(parentMessageId ? { parentMessageId } : {}),
+        });
+      }
     } catch {
       setText(trimmed);
     } finally {
@@ -103,7 +134,51 @@ export function MessageInput({ channelId, channelName, parentMessageId, placehol
     }
   };
 
+  function handleSlashSelect(command: string) {
+    setText(command + " ");
+    setSlashState(null);
+    textareaRef.current?.focus();
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Slash command navigation
+    if (slashState) {
+      const filtered = SLASH_COMMANDS.filter((c) =>
+        c.command.startsWith("/" + slashState.query.toLowerCase())
+      );
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSlashState({
+          ...slashState,
+          selectedIndex: Math.min(slashState.selectedIndex + 1, filtered.length - 1),
+        });
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSlashState({
+          ...slashState,
+          selectedIndex: Math.max(slashState.selectedIndex - 1, 0),
+        });
+        return;
+      }
+      if (e.key === "Enter" && filtered.length > 0) {
+        e.preventDefault();
+        handleSlashSelect(filtered[slashState.selectedIndex].command);
+        return;
+      }
+      if (e.key === "Tab" && filtered.length > 0) {
+        e.preventDefault();
+        handleSlashSelect(filtered[slashState.selectedIndex].command);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setSlashState(null);
+        return;
+      }
+    }
+
     if (mentionState) {
       const filtered = (onlineUsers ?? [])
         .filter((u) => u.username.toLowerCase().startsWith(mentionState.query.toLowerCase()))
@@ -160,6 +235,19 @@ export function MessageInput({ channelId, channelName, parentMessageId, placehol
       el.style.height = Math.min(el.scrollHeight, 120) + "px";
     }
 
+    // Slash command detection
+    if (value.startsWith("/") && !value.includes("\n")) {
+      const query = value.slice(1).split(" ")[0];
+      // Only show hint when user is still typing the command (no space yet)
+      if (!value.includes(" ")) {
+        setSlashState({ active: true, query, selectedIndex: 0 });
+      } else {
+        setSlashState(null);
+      }
+    } else {
+      setSlashState(null);
+    }
+
     // Mention detection
     const cursorPos = e.target.selectionStart;
     detectMention(value, cursorPos);
@@ -180,6 +268,13 @@ export function MessageInput({ channelId, channelName, parentMessageId, placehol
 
   return (
     <div className="relative">
+      {slashState && (
+        <SlashCommandHint
+          query={slashState.query}
+          selectedIndex={slashState.selectedIndex}
+          onSelect={handleSlashSelect}
+        />
+      )}
       {mentionState && onlineUsers && (
         <MentionAutocomplete
           query={mentionState.query}

@@ -80,6 +80,25 @@ export const getOnlineUsers = query({
   },
 });
 
+export const changeUsername = mutation({
+  args: {
+    userId: v.id("users"),
+    newUsername: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const username = args.newUsername.trim();
+    if (!username || username.length > 30) throw new Error("Invalid username");
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", username))
+      .unique();
+    if (existing && existing._id !== args.userId) {
+      throw new Error("Username already taken");
+    }
+    await ctx.db.patch("users", args.userId, { username });
+  },
+});
+
 export const getCurrentUser = query({
   args: {
     sessionId: v.string(),

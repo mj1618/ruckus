@@ -28,9 +28,14 @@ const schema = defineSchema({
     parentMessageId: v.optional(v.id("messages")),
     replyCount: v.optional(v.number()),
     latestReplyTime: v.optional(v.number()),
+    type: v.optional(v.union(v.literal("action"), v.literal("poll"), v.literal("system"))),
   })
     .index("by_channelId", ["channelId"])
-    .index("by_parentMessageId", ["parentMessageId"]),
+    .index("by_parentMessageId", ["parentMessageId"])
+    .searchIndex("search_text", {
+      searchField: "text",
+      filterFields: ["channelId"],
+    }),
 
   typingIndicators: defineTable({
     channelId: v.id("channels"),
@@ -62,6 +67,27 @@ const schema = defineSchema({
   })
     .index("by_channelId", ["channelId"])
     .index("by_messageId", ["messageId"]),
+
+  polls: defineTable({
+    channelId: v.id("channels"),
+    messageId: v.id("messages"),
+    question: v.string(),
+    options: v.array(v.object({
+      text: v.string(),
+      votes: v.number(),
+    })),
+    createdBy: v.id("users"),
+  })
+    .index("by_messageId", ["messageId"])
+    .index("by_channelId", ["channelId"]),
+
+  pollVotes: defineTable({
+    pollId: v.id("polls"),
+    userId: v.id("users"),
+    optionIndex: v.number(),
+  })
+    .index("by_pollId", ["pollId"])
+    .index("by_pollId_userId", ["pollId", "userId"]),
 });
 
 export default schema;
