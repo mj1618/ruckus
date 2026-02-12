@@ -6,9 +6,11 @@ import { Id } from "../../convex/_generated/dataModel";
 import { useUser } from "@/components/UserContext";
 import { MessageText } from "@/components/MessageText";
 import { MessageAttachments } from "@/components/MessageAttachments";
+import { Avatar } from "@/components/Avatar";
 
 interface PinnedMessagesProps {
-  channelId: Id<"channels">;
+  channelId?: Id<"channels">;
+  conversationId?: Id<"conversations">;
   onClose: () => void;
 }
 
@@ -29,8 +31,11 @@ function formatTimestamp(ts: number): string {
   return `${dateStr}, ${time}`;
 }
 
-export function PinnedMessages({ channelId, onClose }: PinnedMessagesProps) {
-  const pinnedMessages = useQuery(api.pins.getPinnedMessages, { channelId });
+export function PinnedMessages({ channelId, conversationId, onClose }: PinnedMessagesProps) {
+  const pinnedMessages = useQuery(
+    api.pins.getPinnedMessages,
+    channelId ? { channelId } : conversationId ? { conversationId } : "skip"
+  );
   const { user } = useUser();
   const unpinMessage = useMutation(api.pins.unpinMessage);
 
@@ -76,12 +81,13 @@ export function PinnedMessages({ channelId, onClose }: PinnedMessagesProps) {
             {pinnedMessages.map(({ pin, message }) => (
               <div key={pin._id} className="p-4 hover:bg-hover">
                 <div className="flex gap-3">
-                  <div
-                    className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm"
-                    style={{ backgroundColor: message.user.avatarColor }}
-                  >
-                    {message.user.username[0].toUpperCase()}
-                  </div>
+                  <Avatar
+                    username={message.user.username}
+                    avatarColor={message.user.avatarColor}
+                    avatarUrl={message.user.avatarUrl}
+                    size="md"
+                    className="mt-0.5 shrink-0"
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-2">
                       <span className="text-sm font-bold text-text">{message.user.username}</span>

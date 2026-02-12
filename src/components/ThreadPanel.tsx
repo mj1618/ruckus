@@ -10,11 +10,13 @@ import { MessageInput } from "@/components/MessageInput";
 import { MessageText } from "@/components/MessageText";
 import { LinkPreview } from "@/components/LinkPreview";
 import { MessageAttachments } from "@/components/MessageAttachments";
+import { Avatar } from "@/components/Avatar";
 
 interface ThreadPanelProps {
   parentMessageId: Id<"messages">;
-  channelId: Id<"channels">;
-  channelName: string;
+  channelId?: Id<"channels">;
+  conversationId?: Id<"conversations">;
+  contextName: string;
   onClose: () => void;
 }
 
@@ -35,7 +37,7 @@ function formatTimestamp(ts: number): string {
   return `${dateStr}, ${time}`;
 }
 
-export function ThreadPanel({ parentMessageId, channelId, channelName, onClose }: ThreadPanelProps) {
+export function ThreadPanel({ parentMessageId, channelId, conversationId, contextName, onClose }: ThreadPanelProps) {
   const threadData = useQuery(api.messages.getThreadMessages, { parentMessageId: parentMessageId });
   const { user } = useUser();
 
@@ -127,12 +129,13 @@ export function ThreadPanel({ parentMessageId, channelId, channelName, onClose }
         {/* Parent message - read-only display */}
         <div className="border-b border-border p-4">
           <div className="flex gap-3">
-            <div
-              className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm"
-              style={{ backgroundColor: parent.user.avatarColor }}
-            >
-              {parent.user.username[0].toUpperCase()}
-            </div>
+            <Avatar
+              username={parent.user.username}
+              avatarColor={parent.user.avatarColor}
+              avatarUrl={parent.user.avatarUrl}
+              size="lg"
+              className="mt-0.5 h-10 w-10 shrink-0 text-sm"
+            />
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline gap-2">
                 <span className="text-sm font-bold text-text">{parent.user.username}</span>
@@ -184,7 +187,14 @@ export function ThreadPanel({ parentMessageId, channelId, channelName, onClose }
 
       {/* Reply input */}
       <div className="border-t border-border px-4 pb-4 pt-2">
-        <MessageInput channelId={channelId} channelName={channelName} parentMessageId={parentMessageId} placeholder="Reply in thread..." />
+        <MessageInput
+          channelId={channelId}
+          channelName={channelId ? contextName : undefined}
+          conversationId={conversationId}
+          conversationName={conversationId ? contextName : undefined}
+          parentMessageId={parentMessageId}
+          placeholder="Reply in thread..."
+        />
       </div>
     </div>
   );

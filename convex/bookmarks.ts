@@ -27,7 +27,8 @@ export const toggleBookmark = mutation({
     await ctx.db.insert("bookmarks", {
       userId: args.userId,
       messageId: args.messageId,
-      channelId: message.channelId,
+      ...(message.channelId ? { channelId: message.channelId } : {}),
+      ...(message.conversationId ? { conversationId: message.conversationId } : {}),
       savedAt: Date.now(),
     });
   },
@@ -49,10 +50,28 @@ export const getBookmarks = query({
         const message = await ctx.db.get("messages", bookmark.messageId);
         if (!message) return null;
 
-        const [user, channel] = await Promise.all([
-          ctx.db.get("users", message.userId),
-          ctx.db.get("channels", bookmark.channelId),
-        ]);
+        const user = await ctx.db.get("users", message.userId);
+
+        // Get channel or conversation info
+        let channelName: string | undefined;
+        let conversationUser: { _id: string; username: string } | undefined;
+
+        if (bookmark.channelId) {
+          const channel = await ctx.db.get("channels", bookmark.channelId);
+          channelName = channel?.name;
+        } else if (bookmark.conversationId) {
+          const conversation = await ctx.db.get("conversations", bookmark.conversationId);
+          if (conversation) {
+            // Get the other participant
+            const otherUserId = conversation.participant1 === args.userId
+              ? conversation.participant2
+              : conversation.participant1;
+            const otherUser = await ctx.db.get("users", otherUserId);
+            if (otherUser) {
+              conversationUser = { _id: otherUser._id, username: otherUser.username };
+            }
+          }
+        }
 
         return {
           bookmark: { _id: bookmark._id, savedAt: bookmark.savedAt },
@@ -62,15 +81,19 @@ export const getBookmarks = query({
             _creationTime: message._creationTime,
             user: user
               ? {
-                  username: user.username,
-                  avatarColor: user.avatarColor,
-                }
+                username: user.username,
+                avatarColor: user.avatarColor,
+                avatarUrl: user.avatarStorageId ? await ctx.storage.getUrl(user.avatarStorageId) : null,
+              }
               : {
-                  username: "Unknown",
-                  avatarColor: "#6b7280",
-                },
+                username: "Unknown",
+                avatarColor: "#6b7280",
+                avatarUrl: null,
+              },
             channelId: bookmark.channelId,
-            channelName: channel?.name ?? "unknown",
+            channelName,
+            conversationId: bookmark.conversationId,
+            conversationUser,
           },
         };
       })
@@ -83,7 +106,8 @@ export const getBookmarks = query({
 export const getBookmarkedMessageIds = query({
   args: {
     userId: v.id("users"),
-    channelId: v.id("channels"),
+    channelId: v.optional(v.id("channels")),
+    conversationId: v.optional(v.id("conversations")),
   },
   handler: async (ctx, args) => {
     const bookmarks = await ctx.db
@@ -91,9 +115,17 @@ export const getBookmarkedMessageIds = query({
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .collect();
 
-    return bookmarks
-      .filter((b) => b.channelId === args.channelId)
-      .map((b) => b.messageId);
+    if (args.channelId) {
+      return bookmarks
+        .filter((b) => b.channelId === args.channelId)
+        .map((b) => b.messageId);
+    } else if (args.conversationId) {
+      return bookmarks
+        .filter((b) => b.conversationId === args.conversationId)
+        .map((b) => b.messageId);
+    }
+
+    return bookmarks.map((b) => b.messageId);
   },
 });
 

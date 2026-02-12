@@ -4,10 +4,12 @@ import { useState, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
+import { Avatar } from "@/components/Avatar";
 
 interface SearchPanelProps {
   onClose: () => void;
   onNavigateToChannel: (channelId: Id<"channels">) => void;
+  onNavigateToConversation?: (conversationId: Id<"conversations">) => void;
 }
 
 function formatTimestamp(ts: number): string {
@@ -47,7 +49,7 @@ function highlightText(text: string, query: string): React.ReactNode {
   );
 }
 
-export function SearchPanel({ onClose, onNavigateToChannel }: SearchPanelProps) {
+export function SearchPanel({ onClose, onNavigateToChannel, onNavigateToConversation }: SearchPanelProps) {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
 
@@ -100,36 +102,53 @@ export function SearchPanel({ onClose, onNavigateToChannel }: SearchPanelProps) 
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {results.map((result) => (
-              <button
-                key={result._id}
-                type="button"
-                className="w-full p-4 text-left transition-colors hover:bg-hover"
-                onClick={() => onNavigateToChannel(result.channelId)}
-              >
-                <div className="mb-1">
-                  <span className="inline-block rounded bg-accent-soft px-1.5 py-0.5 text-xs font-medium text-accent">
-                    #{result.channelName}
-                  </span>
-                  {result.parentMessageId && (
-                    <span className="ml-1.5 text-xs text-text-faint">in thread</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <div
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-sm"
-                    style={{ backgroundColor: result.avatarColor }}
-                  >
-                    {result.username[0].toUpperCase()}
+            {results.map((result) => {
+              const handleClick = () => {
+                if (result.channelId) {
+                  onNavigateToChannel(result.channelId);
+                } else if (result.conversationId && onNavigateToConversation) {
+                  onNavigateToConversation(result.conversationId);
+                }
+              };
+
+              return (
+                <button
+                  key={result._id}
+                  type="button"
+                  className="w-full p-4 text-left transition-colors hover:bg-hover"
+                  onClick={handleClick}
+                >
+                  <div className="mb-1">
+                    {result.channelId ? (
+                      <span className="inline-block rounded bg-accent-soft px-1.5 py-0.5 text-xs font-medium text-accent">
+                        #{result.channelName}
+                      </span>
+                    ) : result.conversationId ? (
+                      <span className="inline-block rounded bg-success/20 px-1.5 py-0.5 text-xs font-medium text-success">
+                        DM with {result.dmUsername}
+                      </span>
+                    ) : null}
+                    {result.parentMessageId && (
+                      <span className="ml-1.5 text-xs text-text-faint">in thread</span>
+                    )}
                   </div>
-                  <span className="text-xs font-medium text-text-secondary">{result.username}</span>
-                  <span className="text-xs text-text-faint">{formatTimestamp(result._creationTime)}</span>
-                </div>
-                <p className="mt-1 text-sm leading-relaxed text-text-muted">
-                  {highlightText(result.text, debouncedQuery)}
-                </p>
-              </button>
-            ))}
+                  <div className="flex items-center gap-2">
+                    <Avatar
+                      username={result.username}
+                      avatarColor={result.avatarColor}
+                      avatarUrl={result.avatarUrl}
+                      size="xs"
+                      className="shrink-0"
+                    />
+                    <span className="text-xs font-medium text-text-secondary">{result.username}</span>
+                    <span className="text-xs text-text-faint">{formatTimestamp(result._creationTime)}</span>
+                  </div>
+                  <p className="mt-1 text-sm leading-relaxed text-text-muted">
+                    {highlightText(result.text, debouncedQuery)}
+                  </p>
+                </button>
+              );
+            })}
           </div>
         )}
       </div>

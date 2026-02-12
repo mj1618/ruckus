@@ -9,7 +9,16 @@ interface SearchPaletteProps {
   open: boolean;
   onClose: () => void;
   channels: Array<{ _id: Id<"channels">; name: string }>;
+  conversations?: Array<{
+    _id: Id<"conversations">;
+    otherUser: {
+      _id: Id<"users">;
+      username: string;
+      avatarColor: string;
+    } | null;
+  }>;
   onSelectChannel: (channelId: Id<"channels">) => void;
+  onSelectConversation?: (conversationId: Id<"conversations">) => void;
 }
 
 function highlightText(text: string, query: string): React.ReactNode {
@@ -53,11 +62,13 @@ export function SearchPalette({
   open,
   onClose,
   channels,
+  conversations,
   onSelectChannel,
+  onSelectConversation,
 }: SearchPaletteProps) {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"channels" | "messages">(
+  const [activeTab, setActiveTab] = useState<"channels" | "dms" | "messages">(
     "channels"
   );
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -93,8 +104,17 @@ export function SearchPalette({
     c.name.toLowerCase().includes(query.toLowerCase())
   );
 
+  // Filter conversations by query
+  const filteredConversations = (conversations ?? []).filter((c) =>
+    c.otherUser?.username.toLowerCase().includes(query.toLowerCase())
+  );
+
   const currentResults =
-    activeTab === "channels" ? filteredChannels : searchResults ?? [];
+    activeTab === "channels"
+      ? filteredChannels
+      : activeTab === "dms"
+        ? filteredConversations
+        : searchResults ?? [];
   const resultCount = currentResults.length;
 
   // Reset selected index when results change
@@ -120,7 +140,11 @@ export function SearchPalette({
     }
     if (e.key === "Tab") {
       e.preventDefault();
-      setActiveTab((t) => (t === "channels" ? "messages" : "channels"));
+      setActiveTab((t) => {
+        if (t === "channels") return "dms";
+        if (t === "dms") return "messages";
+        return "channels";
+      });
       return;
     }
     if (e.key === "Enter" && resultCount > 0) {
@@ -130,10 +154,19 @@ export function SearchPalette({
         onSelectChannel(
           (item as { _id: Id<"channels">; name: string })._id
         );
+      } else if (activeTab === "dms") {
+        if (onSelectConversation) {
+          onSelectConversation(
+            (item as { _id: Id<"conversations"> })._id
+          );
+        }
       } else {
-        onSelectChannel(
-          (item as { channelId: Id<"channels"> }).channelId
-        );
+        const msgResult = item as { channelId?: Id<"channels">; conversationId?: Id<"conversations"> };
+        if (msgResult.channelId) {
+          onSelectChannel(msgResult.channelId);
+        } else if (msgResult.conversationId && onSelectConversation) {
+          onSelectConversation(msgResult.conversationId);
+        }
       }
       onClose();
       return;
@@ -175,7 +208,9 @@ export function SearchPalette({
             placeholder={
               activeTab === "channels"
                 ? "Search channels..."
-                : "Search messages..."
+                : activeTab === "dms"
+                  ? "Search conversations..."
+                  : "Search messages..."
             }
             className="w-full bg-transparent py-3 text-sm text-text placeholder-text-muted outline-none"
           />
@@ -195,6 +230,16 @@ export function SearchPalette({
             }`}
           >
             Channels
+          </button>
+          <button
+            onClick={() => setActiveTab("dms")}
+            className={`flex-1 px-4 py-2 text-xs font-medium ${
+              activeTab === "dms"
+                ? "border-b-2 border-accent text-accent"
+                : "text-text-muted hover:text-text-secondary"
+            }`}
+          >
+            DMs
           </button>
           <button
             onClick={() => setActiveTab("messages")}
@@ -236,9 +281,42 @@ export function SearchPalette({
                 No channels found
               </div>
             )
+          ) : activeTab === "dms" ? (
+            filteredConversations.length > 0 ? (
+              filteredConversations.map((conv, i) => (
+                <button
+                  key={conv._id}
+                  onClick={() => {
+                    if (onSelectConversation) {
+                      onSelectConversation(conv._id);
+                    }
+                    onClose();
+                  }}
+                  className={`flex w-full items-center px-4 py-2 text-left text-sm ${
+                    i === selectedIndex
+                      ? "bg-selected text-text"
+                      : "text-text-secondary hover:bg-hover"
+                  }`}
+                >
+                  <span
+                    className="mr-2 h-5 w-5 rounded-full flex items-center justify-center text-[10px] text-white"
+                    style={{ backgroundColor: conv.otherUser?.avatarColor ?? "#666" }}
+                  >
+                    {conv.otherUser?.username.charAt(0).toUpperCase() ?? "?"}
+                  </span>
+                  {query
+                    ? highlightText(conv.otherUser?.username ?? "Unknown", query)
+                    : conv.otherUser?.username ?? "Unknown"}
+                </button>
+              ))
+            ) : (
+              <div className="px-4 py-8 text-center text-sm text-text-muted">
+                No conversations found
+              </div>
+            )
           ) : debouncedQuery.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-text-muted">
-              Type to search messages across all channels
+              Type to search messages across all channels and DMs
             </div>
           ) : searchResults === undefined ? (
             <div className="px-4 py-8 text-center text-sm text-text-muted">
@@ -253,7 +331,11 @@ export function SearchPalette({
               <button
                 key={result._id}
                 onClick={() => {
-                  onSelectChannel(result.channelId);
+                  if (result.channelId) {
+                    onSelectChannel(result.channelId);
+                  } else if (result.conversationId && onSelectConversation) {
+                    onSelectConversation(result.conversationId);
+                  }
                   onClose();
                 }}
                 className={`w-full px-4 py-2.5 text-left ${
@@ -263,9 +345,15 @@ export function SearchPalette({
                 }`}
               >
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="font-medium text-text-muted">
-                    #{result.channelName}
-                  </span>
+                  {result.channelId ? (
+                    <span className="font-medium text-text-muted">
+                      #{result.channelName}
+                    </span>
+                  ) : (
+                    <span className="font-medium text-success">
+                      DM with {result.dmUsername}
+                    </span>
+                  )}
                   <span className="text-text-faint">·</span>
                   <span
                     className="font-medium"

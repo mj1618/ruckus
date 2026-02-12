@@ -1,11 +1,13 @@
 "use client";
 
 import { Id } from "../../convex/_generated/dataModel";
+import { Avatar } from "@/components/Avatar";
 
 interface MentionUser {
   _id: Id<"users">;
   username: string;
   avatarColor: string;
+  avatarUrl?: string | null;
 }
 
 interface MentionAutocompleteProps {
@@ -50,12 +52,13 @@ export function MentionAutocomplete({ query, users, selectedIndex, onSelect, pos
             onSelect(user.username);
           }}
         >
-          <div
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm"
-            style={{ backgroundColor: user.avatarColor }}
-          >
-            {user.username[0].toUpperCase()}
-          </div>
+          <Avatar
+            username={user.username}
+            avatarColor={user.avatarColor}
+            avatarUrl={user.avatarUrl}
+            size="sm"
+            className="shrink-0"
+          />
           <span className="truncate text-sm text-text">{user.username}</span>
         </button>
       ))}

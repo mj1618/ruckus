@@ -270,6 +270,708 @@
   --foreground: var(--text-primary);
 }
 
+/* Ocean theme - deep blue oceanic tones */
+[data-theme="ocean"] {
+  /* Backgrounds - deep ocean blues */
+  --bg-base: #0a1628;
+  --bg-primary: #0f2137;
+  --bg-secondary: #152a42;
+  --bg-tertiary: #1e3654;
+  --bg-modifier-hover: #264263;
+  --bg-modifier-active: #2f4f75;
+  --bg-modifier-selected: #375a82;
+  
+  /* Accent colors - cyan */
+  --accent-primary: #06b6d4;
+  --accent-primary-hover: #0891b2;
+  --accent-primary-active: #0e7490;
+  --accent-secondary: #22d3ee;
+  --accent-soft: rgba(6, 182, 212, 0.15);
+  --accent-soft-hover: rgba(6, 182, 212, 0.25);
+  
+  /* Text hierarchy */
+  --text-primary: #e0f2fe;
+  --text-secondary: #a5d0e8;
+  --text-muted: #7aa2c4;
+  --text-faint: #5580a0;
+  --text-link: #22d3ee;
+  
+  /* Borders */
+  --border-subtle: #264263;
+  --border-strong: #375a82;
+  
+  /* Status colors */
+  --status-online: #34d399;
+  --status-idle: #fbbf24;
+  --status-dnd: #f87171;
+  --status-offline: #5580a0;
+  
+  /* Semantic colors */
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --info: #22d3ee;
+  
+  /* Pin/bookmark accent */
+  --pin-color: #fbbf24;
+  --bookmark-color: #06b6d4;
+  
+  /* Message specific */
+  --message-hover: rgba(0, 0, 0, 0.08);
+  
+  /* Legacy mapping */
+  --background: var(--bg-secondary);
+  --foreground: var(--text-primary);
+}
+
+/* Rose theme - warm pink/rose tones */
+[data-theme="rose"] {
+  /* Backgrounds - deep rose-tinted darks */
+  --bg-base: #1a1318;
+  --bg-primary: #241c22;
+  --bg-secondary: #2c232a;
+  --bg-tertiary: #3a2e36;
+  --bg-modifier-hover: #463842;
+  --bg-modifier-active: #54454f;
+  --bg-modifier-selected: #60505a;
+  
+  /* Accent colors - pink/rose */
+  --accent-primary: #f472b6;
+  --accent-primary-hover: #ec4899;
+  --accent-primary-active: #db2777;
+  --accent-secondary: #f9a8d4;
+  --accent-soft: rgba(244, 114, 182, 0.15);
+  --accent-soft-hover: rgba(244, 114, 182, 0.25);
+  
+  /* Text hierarchy */
+  --text-primary: #fce7f3;
+  --text-secondary: #dbb8cd;
+  --text-muted: #b58a9f;
+  --text-faint: #8a6578;
+  --text-link: #f9a8d4;
+  
+  /* Borders */
+  --border-subtle: #463842;
+  --border-strong: #60505a;
+  
+  /* Status colors */
+  --status-online: #4ade80;
+  --status-idle: #fbbf24;
+  --status-dnd: #f87171;
+  --status-offline: #8a6578;
+  
+  /* Semantic colors */
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --info: #38bdf8;
+  
+  /* Pin/bookmark accent */
+  --pin-color: #fbbf24;
+  --bookmark-color: #f472b6;
+  
+  /* Message specific */
+  --message-hover: rgba(0, 0, 0, 0.08);
+  
+  /* Legacy mapping */
+  --background: var(--bg-secondary);
+  --foreground: var(--text-primary);
+}
+
+/* Dracula theme - popular purple-based theme */
+[data-theme="dracula"] {
+  /* Backgrounds - Dracula signature colors */
+  --bg-base: #21222c;
+  --bg-primary: #282a36;
+  --bg-secondary: #2d303d;
+  --bg-tertiary: #343746;
+  --bg-modifier-hover: #3c3f50;
+  --bg-modifier-active: #44475a;
+  --bg-modifier-selected: #4d5066;
+  
+  /* Accent colors - purple */
+  --accent-primary: #bd93f9;
+  --accent-primary-hover: #a87de8;
+  --accent-primary-active: #9368d7;
+  --accent-secondary: #caa9fa;
+  --accent-soft: rgba(189, 147, 249, 0.15);
+  --accent-soft-hover: rgba(189, 147, 249, 0.25);
+  
+  /* Text hierarchy */
+  --text-primary: #f8f8f2;
+  --text-secondary: #c5c5bc;
+  --text-muted: #6272a4;
+  --text-faint: #4a5578;
+  --text-link: #8be9fd;
+  
+  /* Borders */
+  --border-subtle: #44475a;
+  --border-strong: #565970;
+  
+  /* Status colors */
+  --status-online: #50fa7b;
+  --status-idle: #ffb86c;
+  --status-dnd: #ff5555;
+  --status-offline: #4a5578;
+  
+  /* Semantic colors */
+  --success: #50fa7b;
+  --warning: #ffb86c;
+  --danger: #ff5555;
+  --info: #8be9fd;
+  
+  /* Pin/bookmark accent */
+  --pin-color: #ffb86c;
+  --bookmark-color: #bd93f9;
+  
+  /* Message specific */
+  --message-hover: rgba(0, 0, 0, 0.08);
+  
+  /* Legacy mapping */
+  --background: var(--bg-secondary);
+  --foreground: var(--text-primary);
+}
+
+/* Nord theme - cool arctic tones */
+[data-theme="nord"] {
+  /* Backgrounds - Nord polar night */
+  --bg-base: #2e3440;
+  --bg-primary: #3b4252;
+  --bg-secondary: #434c5e;
+  --bg-tertiary: #4c566a;
+  --bg-modifier-hover: #545e72;
+  --bg-modifier-active: #5d6779;
+  --bg-modifier-selected: #656f81;
+  
+  /* Accent colors - frost blue */
+  --accent-primary: #88c0d0;
+  --accent-primary-hover: #7ab3c3;
+  --accent-primary-active: #6ca5b6;
+  --accent-secondary: #8fbcbb;
+  --accent-soft: rgba(136, 192, 208, 0.15);
+  --accent-soft-hover: rgba(136, 192, 208, 0.25);
+  
+  /* Text hierarchy */
+  --text-primary: #eceff4;
+  --text-secondary: #d8dee9;
+  --text-muted: #7b88a1;
+  --text-faint: #5e6a82;
+  --text-link: #81a1c1;
+  
+  /* Borders */
+  --border-subtle: #545e72;
+  --border-strong: #656f81;
+  
+  /* Status colors */
+  --status-online: #a3be8c;
+  --status-idle: #ebcb8b;
+  --status-dnd: #bf616a;
+  --status-offline: #5e6a82;
+  
+  /* Semantic colors */
+  --success: #a3be8c;
+  --warning: #ebcb8b;
+  --danger: #bf616a;
+  --info: #81a1c1;
+  
+  /* Pin/bookmark accent */
+  --pin-color: #ebcb8b;
+  --bookmark-color: #88c0d0;
+  
+  /* Message specific */
+  --message-hover: rgba(0, 0, 0, 0.08);
+  
+  /* Legacy mapping */
+  --background: var(--bg-secondary);
+  --foreground: var(--text-primary);
+}
+
+/* Coffee theme - warm brown coffee tones */
+[data-theme="coffee"] {
+  /* Backgrounds - rich coffee browns */
+  --bg-base: #1c1816;
+  --bg-primary: #2a2420;
+  --bg-secondary: #332c27;
+  --bg-tertiary: #403831;
+  --bg-modifier-hover: #4d443c;
+  --bg-modifier-active: #5a5047;
+  --bg-modifier-selected: #665b51;
+  
+  /* Accent colors - caramel/latte */
+  --accent-primary: #d4a574;
+  --accent-primary-hover: #c79560;
+  --accent-primary-active: #b8854f;
+  --accent-secondary: #e0b990;
+  --accent-soft: rgba(212, 165, 116, 0.15);
+  --accent-soft-hover: rgba(212, 165, 116, 0.25);
+  
+  /* Text hierarchy */
+  --text-primary: #f5ebe0;
+  --text-secondary: #d4c8b8;
+  --text-muted: #9c8b7a;
+  --text-faint: #756658;
+  --text-link: #e0b990;
+  
+  /* Borders */
+  --border-subtle: #4d443c;
+  --border-strong: #665b51;
+  
+  /* Status colors */
+  --status-online: #84cc16;
+  --status-idle: #fbbf24;
+  --status-dnd: #ef4444;
+  --status-offline: #756658;
+  
+  /* Semantic colors */
+  --success: #84cc16;
+  --warning: #fbbf24;
+  --danger: #ef4444;
+  --info: #38bdf8;
+  
+  /* Pin/bookmark accent */
+  --pin-color: #fbbf24;
+  --bookmark-color: #d4a574;
+  
+  /* Message specific */
+  --message-hover: rgba(0, 0, 0, 0.08);
+  
+  /* Legacy mapping */
+  --background: var(--bg-secondary);
+  --foreground: var(--text-primary);
+}
+
+/* Solarized Dark theme - classic developer theme */
+[data-theme="solarized-dark"] {
+  /* Backgrounds - Solarized base colors */
+  --bg-base: #002b36;
+  --bg-primary: #073642;
+  --bg-secondary: #0a3f4c;
+  --bg-tertiary: #0e4957;
+  --bg-modifier-hover: #125362;
+  --bg-modifier-active: #175d6d;
+  --bg-modifier-selected: #1c6778;
+  
+  /* Accent colors - Solarized blue */
+  --accent-primary: #268bd2;
+  --accent-primary-hover: #2079b8;
+  --accent-primary-active: #1a679e;
+  --accent-secondary: #2aa198;
+  --accent-soft: rgba(38, 139, 210, 0.15);
+  --accent-soft-hover: rgba(38, 139, 210, 0.25);
+  
+  /* Text hierarchy */
+  --text-primary: #fdf6e3;
+  --text-secondary: #eee8d5;
+  --text-muted: #839496;
+  --text-faint: #657b83;
+  --text-link: #2aa198;
+  
+  /* Borders */
+  --border-subtle: #175d6d;
+  --border-strong: #1c6778;
+  
+  /* Status colors */
+  --status-online: #859900;
+  --status-idle: #b58900;
+  --status-dnd: #dc322f;
+  --status-offline: #657b83;
+  
+  /* Semantic colors */
+  --success: #859900;
+  --warning: #b58900;
+  --danger: #dc322f;
+  --info: #268bd2;
+  
+  /* Pin/bookmark accent */
+  --pin-color: #b58900;
+  --bookmark-color: #268bd2;
+  
+  /* Message specific */
+  --message-hover: rgba(0, 0, 0, 0.08);
+  
+  /* Legacy mapping */
+  --background: var(--bg-secondary);
+  --foreground: var(--text-primary);
+}
+
+/* Solarized Light theme - light developer theme */
+[data-theme="solarized-light"] {
+  /* Backgrounds - Solarized light base colors */
+  --bg-base: #fdf6e3;
+  --bg-primary: #eee8d5;
+  --bg-secondary: #f5f0e1;
+  --bg-tertiary: #ddd6c3;
+  --bg-modifier-hover: #d4ccb5;
+  --bg-modifier-active: #cbc3a8;
+  --bg-modifier-selected: #c2ba9a;
+  
+  /* Accent colors - Solarized blue */
+  --accent-primary: #268bd2;
+  --accent-primary-hover: #2079b8;
+  --accent-primary-active: #1a679e;
+  --accent-secondary: #2aa198;
+  --accent-soft: rgba(38, 139, 210, 0.12);
+  --accent-soft-hover: rgba(38, 139, 210, 0.2);
+  
+  /* Text hierarchy */
+  --text-primary: #073642;
+  --text-secondary: #586e75;
+  --text-muted: #657b83;
+  --text-faint: #93a1a1;
+  --text-link: #2aa198;
+  
+  /* Borders */
+  --border-subtle: #d4ccb5;
+  --border-strong: #c2ba9a;
+  
+  /* Status colors */
+  --status-online: #859900;
+  --status-idle: #b58900;
+  --status-dnd: #dc322f;
+  --status-offline: #93a1a1;
+  
+  /* Semantic colors */
+  --success: #859900;
+  --warning: #b58900;
+  --danger: #dc322f;
+  --info: #268bd2;
+  
+  /* Pin/bookmark accent */
+  --pin-color: #b58900;
+  --bookmark-color: #268bd2;
+  
+  /* Message specific */
+  --message-hover: rgba(0, 0, 0, 0.04);
+  
+  /* Legacy mapping */
+  --background: var(--bg-secondary);
+  --foreground: var(--text-primary);
+}
+
+/* Monokai theme - classic code editor theme */
+[data-theme="monokai"] {
+  /* Backgrounds - Monokai signature dark */
+  --bg-base: #1e1f1c;
+  --bg-primary: #272822;
+  --bg-secondary: #2d2e27;
+  --bg-tertiary: #3a3b32;
+  --bg-modifier-hover: #44453b;
+  --bg-modifier-active: #4e5045;
+  --bg-modifier-selected: #585a4f;
+  
+  /* Accent colors - Monokai green */
+  --accent-primary: #a6e22e;
+  --accent-primary-hover: #95cc29;
+  --accent-primary-active: #84b624;
+  --accent-secondary: #f92672;
+  --accent-soft: rgba(166, 226, 46, 0.15);
+  --accent-soft-hover: rgba(166, 226, 46, 0.25);
+  
+  /* Text hierarchy */
+  --text-primary: #f8f8f2;
+  --text-secondary: #d6d6cb;
+  --text-muted: #75715e;
+  --text-faint: #5c5a4d;
+  --text-link: #66d9ef;
+  
+  /* Borders */
+  --border-subtle: #4e5045;
+  --border-strong: #585a4f;
+  
+  /* Status colors */
+  --status-online: #a6e22e;
+  --status-idle: #e6db74;
+  --status-dnd: #f92672;
+  --status-offline: #5c5a4d;
+  
+  /* Semantic colors */
+  --success: #a6e22e;
+  --warning: #e6db74;
+  --danger: #f92672;
+  --info: #66d9ef;
+  
+  /* Pin/bookmark accent */
+  --pin-color: #e6db74;
+  --bookmark-color: #a6e22e;
+  
+  /* Message specific */
+  --message-hover: rgba(0, 0, 0, 0.08);
+  
+  /* Legacy mapping */
+  --background: var(--bg-secondary);
+  --foreground: var(--text-primary);
+}
+
+/* Gruvbox theme - retro groove colors */
+[data-theme="gruvbox"] {
+  /* Backgrounds - Gruvbox dark */
+  --bg-base: #1d2021;
+  --bg-primary: #282828;
+  --bg-secondary: #32302f;
+  --bg-tertiary: #3c3836;
+  --bg-modifier-hover: #504945;
+  --bg-modifier-active: #665c54;
+  --bg-modifier-selected: #7c6f64;
+  
+  /* Accent colors - Gruvbox yellow */
+  --accent-primary: #fabd2f;
+  --accent-primary-hover: #e5ab2a;
+  --accent-primary-active: #d09a26;
+  --accent-secondary: #fe8019;
+  --accent-soft: rgba(250, 189, 47, 0.15);
+  --accent-soft-hover: rgba(250, 189, 47, 0.25);
+  
+  /* Text hierarchy */
+  --text-primary: #ebdbb2;
+  --text-secondary: #d5c4a1;
+  --text-muted: #928374;
+  --text-faint: #7c6f64;
+  --text-link: #83a598;
+  
+  /* Borders */
+  --border-subtle: #504945;
+  --border-strong: #665c54;
+  
+  /* Status colors */
+  --status-online: #b8bb26;
+  --status-idle: #fabd2f;
+  --status-dnd: #fb4934;
+  --status-offline: #7c6f64;
+  
+  /* Semantic colors */
+  --success: #b8bb26;
+  --warning: #fabd2f;
+  --danger: #fb4934;
+  --info: #83a598;
+  
+  /* Pin/bookmark accent */
+  --pin-color: #fe8019;
+  --bookmark-color: #fabd2f;
+  
+  /* Message specific */
+  --message-hover: rgba(0, 0, 0, 0.08);
+  
+  /* Legacy mapping */
+  --background: var(--bg-secondary);
+  --foreground: var(--text-primary);
+}
+
+/* Synthwave theme - neon cyberpunk vibes */
+[data-theme="synthwave"] {
+  /* Backgrounds - deep purple/dark */
+  --bg-base: #1a1025;
+  --bg-primary: #241b2f;
+  --bg-secondary: #2d2340;
+  --bg-tertiary: #382d4d;
+  --bg-modifier-hover: #433859;
+  --bg-modifier-active: #4f4366;
+  --bg-modifier-selected: #5b4e73;
+  
+  /* Accent colors - hot pink */
+  --accent-primary: #f92aad;
+  --accent-primary-hover: #e0259c;
+  --accent-primary-active: #c7208b;
+  --accent-secondary: #36f9f6;
+  --accent-soft: rgba(249, 42, 173, 0.15);
+  --accent-soft-hover: rgba(249, 42, 173, 0.25);
+  
+  /* Text hierarchy */
+  --text-primary: #f4eeff;
+  --text-secondary: #d4c8e8;
+  --text-muted: #9d8bba;
+  --text-faint: #7a6a94;
+  --text-link: #36f9f6;
+  
+  /* Borders */
+  --border-subtle: #4f4366;
+  --border-strong: #5b4e73;
+  
+  /* Status colors */
+  --status-online: #72f1b8;
+  --status-idle: #fede5d;
+  --status-dnd: #fe4450;
+  --status-offline: #7a6a94;
+  
+  /* Semantic colors */
+  --success: #72f1b8;
+  --warning: #fede5d;
+  --danger: #fe4450;
+  --info: #36f9f6;
+  
+  /* Pin/bookmark accent */
+  --pin-color: #fede5d;
+  --bookmark-color: #f92aad;
+  
+  /* Message specific */
+  --message-hover: rgba(0, 0, 0, 0.08);
+  
+  /* Legacy mapping */
+  --background: var(--bg-secondary);
+  --foreground: var(--text-primary);
+}
+
+/* Catppuccin theme - soothing pastel colors (Mocha variant) */
+[data-theme="catppuccin"] {
+  /* Backgrounds - Catppuccin Mocha */
+  --bg-base: #1e1e2e;
+  --bg-primary: #313244;
+  --bg-secondary: #363849;
+  --bg-tertiary: #45475a;
+  --bg-modifier-hover: #4e506a;
+  --bg-modifier-active: #585a75;
+  --bg-modifier-selected: #626480;
+  
+  /* Accent colors - Catppuccin mauve */
+  --accent-primary: #cba6f7;
+  --accent-primary-hover: #b794e8;
+  --accent-primary-active: #a382d9;
+  --accent-secondary: #f5c2e7;
+  --accent-soft: rgba(203, 166, 247, 0.15);
+  --accent-soft-hover: rgba(203, 166, 247, 0.25);
+  
+  /* Text hierarchy */
+  --text-primary: #cdd6f4;
+  --text-secondary: #bac2de;
+  --text-muted: #6c7086;
+  --text-faint: #585b70;
+  --text-link: #89b4fa;
+  
+  /* Borders */
+  --border-subtle: #4e506a;
+  --border-strong: #626480;
+  
+  /* Status colors */
+  --status-online: #a6e3a1;
+  --status-idle: #f9e2af;
+  --status-dnd: #f38ba8;
+  --status-offline: #585b70;
+  
+  /* Semantic colors */
+  --success: #a6e3a1;
+  --warning: #f9e2af;
+  --danger: #f38ba8;
+  --info: #89b4fa;
+  
+  /* Pin/bookmark accent */
+  --pin-color: #f9e2af;
+  --bookmark-color: #cba6f7;
+  
+  /* Message specific */
+  --message-hover: rgba(0, 0, 0, 0.08);
+  
+  /* Legacy mapping */
+  --background: var(--bg-secondary);
+  --foreground: var(--text-primary);
+}
+
+/* Tokyo Night theme - popular VSCode theme */
+[data-theme="tokyo-night"] {
+  /* Backgrounds - Tokyo Night */
+  --bg-base: #16161e;
+  --bg-primary: #1a1b26;
+  --bg-secondary: #1f202b;
+  --bg-tertiary: #24252f;
+  --bg-modifier-hover: #2a2b36;
+  --bg-modifier-active: #32333e;
+  --bg-modifier-selected: #3b3c4a;
+  
+  /* Accent colors - Tokyo Night blue */
+  --accent-primary: #7aa2f7;
+  --accent-primary-hover: #6b93e8;
+  --accent-primary-active: #5c84d9;
+  --accent-secondary: #bb9af7;
+  --accent-soft: rgba(122, 162, 247, 0.15);
+  --accent-soft-hover: rgba(122, 162, 247, 0.25);
+  
+  /* Text hierarchy */
+  --text-primary: #c0caf5;
+  --text-secondary: #a9b1d6;
+  --text-muted: #565f89;
+  --text-faint: #414868;
+  --text-link: #7dcfff;
+  
+  /* Borders */
+  --border-subtle: #32333e;
+  --border-strong: #3b3c4a;
+  
+  /* Status colors */
+  --status-online: #9ece6a;
+  --status-idle: #e0af68;
+  --status-dnd: #f7768e;
+  --status-offline: #414868;
+  
+  /* Semantic colors */
+  --success: #9ece6a;
+  --warning: #e0af68;
+  --danger: #f7768e;
+  --info: #7dcfff;
+  
+  /* Pin/bookmark accent */
+  --pin-color: #e0af68;
+  --bookmark-color: #7aa2f7;
+  
+  /* Message specific */
+  --message-hover: rgba(0, 0, 0, 0.08);
+  
+  /* Legacy mapping */
+  --background: var(--bg-secondary);
+  --foreground: var(--text-primary);
+}
+
+/* One Dark theme - Atom editor inspired */
+[data-theme="one-dark"] {
+  /* Backgrounds - One Dark */
+  --bg-base: #21252b;
+  --bg-primary: #282c34;
+  --bg-secondary: #2c313a;
+  --bg-tertiary: #333842;
+  --bg-modifier-hover: #3a3f4a;
+  --bg-modifier-active: #424752;
+  --bg-modifier-selected: #4a4f5a;
+  
+  /* Accent colors - One Dark blue */
+  --accent-primary: #61afef;
+  --accent-primary-hover: #529ed8;
+  --accent-primary-active: #448dc1;
+  --accent-secondary: #c678dd;
+  --accent-soft: rgba(97, 175, 239, 0.15);
+  --accent-soft-hover: rgba(97, 175, 239, 0.25);
+  
+  /* Text hierarchy */
+  --text-primary: #abb2bf;
+  --text-secondary: #9da5b4;
+  --text-muted: #5c6370;
+  --text-faint: #4b5263;
+  --text-link: #56b6c2;
+  
+  /* Borders */
+  --border-subtle: #3a3f4a;
+  --border-strong: #4a4f5a;
+  
+  /* Status colors */
+  --status-online: #98c379;
+  --status-idle: #e5c07b;
+  --status-dnd: #e06c75;
+  --status-offline: #4b5263;
+  
+  /* Semantic colors */
+  --success: #98c379;
+  --warning: #e5c07b;
+  --danger: #e06c75;
+  --info: #56b6c2;
+  
+  /* Pin/bookmark accent */
+  --pin-color: #e5c07b;
+  --bookmark-color: #61afef;
+  
+  /* Message specific */
+  --message-hover: rgba(0, 0, 0, 0.08);
+  
+  /* Legacy mapping */
+  --background: var(--bg-secondary);
+  --foreground: var(--text-primary);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -346,4 +1048,16 @@ body {
 @keyframes typingFade {
   0%, 100% { opacity: 0; }
   50% { opacity: 1; }
+}
+
+/* Status saved checkmark animation */
+@keyframes statusCheckDraw {
+  0% {
+    stroke-dasharray: 24;
+    stroke-dashoffset: 24;
+  }
+  100% {
+    stroke-dasharray: 24;
+    stroke-dashoffset: 0;
+  }
 }

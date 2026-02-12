@@ -11,11 +11,14 @@ interface UserContextType {
     _id: Id<"users">;
     username: string;
     avatarColor: string;
+    avatarUrl?: string | null;
     statusEmoji?: string;
     statusText?: string;
   } | null;
   sessionId: string;
   join: (username: string) => Promise<void>;
+  signup: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -34,6 +37,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     sessionId ? { sessionId } : "skip"
   );
   const joinOrReturn = useMutation(api.users.joinOrReturn);
+  const signupMutation = useMutation(api.users.signup);
+  const loginMutation = useMutation(api.users.login);
   const heartbeatMutation = useMutation(api.users.heartbeat);
   const seedChannels = useMutation(api.channels.seedDefaultChannels);
 
@@ -44,6 +49,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         _id: currentUser._id,
         username: currentUser.username,
         avatarColor: currentUser.avatarColor,
+        avatarUrl: currentUser.avatarUrl,
         statusEmoji: currentUser.statusEmoji,
         statusText: currentUser.statusText,
       }
@@ -71,8 +77,31 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setIsJoining(false);
   };
 
+  const signup = async (username: string, password: string) => {
+    setIsJoining(true);
+    try {
+      const userId = await signupMutation({ sessionId, username, password });
+      await seedChannels({ userId });
+    } catch (error) {
+      setIsJoining(false);
+      throw error;
+    }
+    setIsJoining(false);
+  };
+
+  const login = async (username: string, password: string) => {
+    setIsJoining(true);
+    try {
+      await loginMutation({ sessionId, username, password });
+    } catch (error) {
+      setIsJoining(false);
+      throw error;
+    }
+    setIsJoining(false);
+  };
+
   return (
-    <UserContext.Provider value={{ user, sessionId, join, isLoading }}>
+    <UserContext.Provider value={{ user, sessionId, join, signup, login, isLoading }}>
       {children}
     </UserContext.Provider>
   );

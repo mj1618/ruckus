@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 
-export type Theme = "dark" | "light" | "midnight" | "forest" | "sunset";
+export type Theme = "dark" | "light" | "midnight" | "forest" | "sunset" | "ocean" | "rose" | "dracula" | "nord" | "coffee" | "solarized-dark" | "solarized-light" | "monokai" | "gruvbox" | "synthwave" | "catppuccin" | "tokyo-night" | "one-dark";
 
 interface ThemeContextValue {
   theme: Theme;
@@ -20,7 +20,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Load theme from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
-    const validThemes: Theme[] = ["dark", "light", "midnight", "forest", "sunset"];
+    const validThemes: Theme[] = ["dark", "light", "midnight", "forest", "sunset", "ocean", "rose", "dracula", "nord", "coffee", "solarized-dark", "solarized-light", "monokai", "gruvbox", "synthwave", "catppuccin", "tokyo-night", "one-dark"];
     if (stored && validThemes.includes(stored)) {
       setThemeState(stored);
     }

@@ -9,10 +9,13 @@ const schema = defineSchema({
     username: v.string(),
     sessionId: v.string(),
     avatarColor: v.string(),
+    avatarStorageId: v.optional(v.id("_storage")),
     lastSeen: v.number(),
     statusEmoji: v.optional(v.string()),
     statusText: v.optional(v.string()),
     isBot: v.optional(v.boolean()),
+    passwordHash: v.optional(v.string()),
+    passwordSalt: v.optional(v.string()),
   })
     .index("by_sessionId", ["sessionId"])
     .index("by_username", ["username"]),
@@ -38,10 +41,42 @@ const schema = defineSchema({
     name: v.string(),
     topic: v.optional(v.string()),
     createdBy: v.id("users"),
+    isPrivate: v.optional(v.boolean()), // undefined/false = public
   }).index("by_name", ["name"]),
 
-  messages: defineTable({
+  channelMembers: defineTable({
     channelId: v.id("channels"),
+    userId: v.id("users"),
+    role: v.union(v.literal("admin"), v.literal("member")),
+  })
+    .index("by_channelId", ["channelId"])
+    .index("by_userId", ["userId"])
+    .index("by_channel_user", ["channelId", "userId"]),
+
+  channelAccessRequests: defineTable({
+    channelId: v.id("channels"),
+    userId: v.id("users"),
+    status: v.union(v.literal("pending"), v.literal("approved"), v.literal("denied")),
+    requestedAt: v.number(),
+    respondedAt: v.optional(v.number()),
+    respondedBy: v.optional(v.id("users")),
+  })
+    .index("by_channelId", ["channelId"])
+    .index("by_userId", ["userId"])
+    .index("by_channel_user", ["channelId", "userId"]),
+
+  conversations: defineTable({
+    participant1: v.id("users"), // Always the lower ID (for consistent ordering)
+    participant2: v.id("users"), // Always the higher ID
+    lastMessageTime: v.optional(v.number()), // For sorting DM list
+  })
+    .index("by_participant1", ["participant1"])
+    .index("by_participant2", ["participant2"])
+    .index("by_participants", ["participant1", "participant2"]),
+
+  messages: defineTable({
+    channelId: v.optional(v.id("channels")), // Optional - either channelId or conversationId must be set
+    conversationId: v.optional(v.id("conversations")), // Optional - for DMs
     userId: v.id("users"),
     text: v.string(),
     editedAt: v.optional(v.number()),
@@ -58,17 +93,21 @@ const schema = defineSchema({
     }))),
   })
     .index("by_channelId", ["channelId"])
+    .index("by_conversationId", ["conversationId"])
     .index("by_parentMessageId", ["parentMessageId"])
     .searchIndex("search_text", {
       searchField: "text",
-      filterFields: ["channelId"],
+      filterFields: ["channelId", "conversationId"],
     }),
 
   typingIndicators: defineTable({
-    channelId: v.id("channels"),
+    channelId: v.optional(v.id("channels")), // Optional - either channelId or conversationId
+    conversationId: v.optional(v.id("conversations")), // Optional - for DMs
     userId: v.id("users"),
     expiresAt: v.number(),
-  }).index("by_channelId", ["channelId"]),
+  })
+    .index("by_channelId", ["channelId"])
+    .index("by_conversationId", ["conversationId"]),
 
   channelReads: defineTable({
     userId: v.id("users"),
@@ -88,11 +127,13 @@ const schema = defineSchema({
 
   pinnedMessages: defineTable({
     messageId: v.id("messages"),
-    channelId: v.id("channels"),
+    channelId: v.optional(v.id("channels")), // Optional - either channelId or conversationId
+    conversationId: v.optional(v.id("conversations")), // Optional - for DMs
     pinnedBy: v.id("users"),
     pinnedAt: v.number(),
   })
     .index("by_channelId", ["channelId"])
+    .index("by_conversationId", ["conversationId"])
     .index("by_messageId", ["messageId"]),
 
   polls: defineTable({
@@ -131,11 +172,20 @@ const schema = defineSchema({
   bookmarks: defineTable({
     userId: v.id("users"),
     messageId: v.id("messages"),
-    channelId: v.id("channels"),
+    channelId: v.optional(v.id("channels")), // Optional - either channelId or conversationId
+    conversationId: v.optional(v.id("conversations")), // Optional - for DMs
     savedAt: v.number(),
   })
     .index("by_userId", ["userId"])
     .index("by_userId_messageId", ["userId", "messageId"]),
+
+  conversationReads: defineTable({
+    userId: v.id("users"),
+    conversationId: v.id("conversations"),
+    lastReadTime: v.number(),
+  })
+    .index("by_user_conversation", ["userId", "conversationId"])
+    .index("by_user", ["userId"]),
 
   drawStrokes: defineTable({
     channelId: v.id("channels"),

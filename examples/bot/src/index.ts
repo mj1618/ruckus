@@ -195,17 +195,17 @@ function appendToChatLog(
     const timestamp = new Date().toISOString();
     const prefix = direction === "SENT" ? "BOT" : "IN";
     const logEntry = `[${timestamp}] ${prefix} #${channel} @${username}: ${message.replace(/\n/g, " ").slice(0, 500)}${message.length > 500 ? "..." : ""}`;
-    
+
     // Find the Chat Log section and append to it
     const chatLogMarker = "## Chat Log";
     const markerIndex = memory.indexOf(chatLogMarker);
-    
+
     if (markerIndex !== -1) {
       // Find where the Chat Log section content should go (after any comment lines)
       const afterMarker = memory.slice(markerIndex + chatLogMarker.length);
       const lines = afterMarker.split("\n");
       let insertIndex = markerIndex + chatLogMarker.length;
-      
+
       // Skip past comment lines and empty lines at the start of the section
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
@@ -223,7 +223,7 @@ function appendToChatLog(
           break;
         }
       }
-      
+
       // Insert the new log entry
       const newMemory = memory.slice(0, insertIndex) + "\n" + logEntry + memory.slice(insertIndex);
       writeMemory(newMemory);
@@ -300,7 +300,7 @@ async function runClaudeCodeStreaming(
 
       try {
         const event = JSON.parse(line);
-        
+
         // Debug: log event types we receive
         if (event.type) {
           console.log(`   [stream] Event type: ${event.type}`);
@@ -480,33 +480,59 @@ interface Mention {
   createdAt: number;
 }
 
+interface DirectMessage {
+  messageId: Id<"messages">;
+  conversationId: Id<"conversations">;
+  text: string;
+  senderId: Id<"users">;
+  senderUsername: string;
+  parentMessageId?: Id<"messages">;
+  createdAt: number;
+}
+
 interface Channel {
   channelId: Id<"channels">;
   name: string;
   topic: string | null;
 }
 
+interface Conversation {
+  conversationId: Id<"conversations">;
+  createdAt: number;
+  lastMessageTime: number | undefined;
+  otherUser: {
+    userId: Id<"users">;
+    username: string;
+    avatarColor: string;
+    isBot?: boolean;
+  } | null;
+}
+
 /**
- * RuckusBot - A simple bot that responds to mentions
+ * RuckusBot - A simple bot that responds to mentions and DMs
  */
 class RuckusBot {
   private client: ConvexHttpClient;
   private apiKey: string;
   private botInfo: BotInfo | null = null;
   private lastSeenTimestamp: number;
+  private lastSeenDMTimestamp: number;
   private pollInterval?: ReturnType<typeof setInterval>;
+  private dmPollInterval?: ReturnType<typeof setInterval>;
   private heartbeatInterval?: ReturnType<typeof setInterval>;
   private processedMentions = new Set<string>();
+  private processedDMs = new Set<string>();
   private isRunning = false;
 
   constructor(convexUrl: string, apiKey: string) {
     this.client = new ConvexHttpClient(convexUrl);
     this.apiKey = apiKey;
     this.lastSeenTimestamp = Date.now();
+    this.lastSeenDMTimestamp = Date.now();
   }
 
   /**
-   * Start the bot - authenticate and begin listening for mentions
+   * Start the bot - authenticate and begin listening for mentions and DMs
    */
   async start(): Promise<void> {
     console.log("🤖 Starting Ruckus bot...\n");
@@ -532,13 +558,26 @@ class RuckusBot {
     }
     console.log("");
 
+    // List existing conversations
+    const conversations = await this.getConversations();
+    if (conversations.length > 0) {
+      console.log("💬 Existing DM conversations:");
+      for (const conv of conversations) {
+        if (conv.otherUser) {
+          console.log(`   @${conv.otherUser.username} (${conv.conversationId})`);
+        }
+      }
+      console.log("");
+    }
+
     // Start heartbeat to show as online
     this.startHeartbeat();
 
-    // Start polling for mentions
-    console.log("👂 Polling for @mentions every 2 seconds...\n");
+    // Start polling for mentions and DMs
+    console.log("👂 Polling for @mentions and DMs every 2 seconds...\n");
     this.isRunning = true;
     this.startPolling();
+    this.startDMPolling();
   }
 
   /**
@@ -580,6 +619,15 @@ class RuckusBot {
   }
 
   /**
+   * Get all DM conversations
+   */
+  async getConversations(): Promise<Conversation[]> {
+    return this.client.query(api.bots.getConversationsAsBot, {
+      apiKey: this.apiKey,
+    });
+  }
+
+  /**
    * Start polling for mentions
    */
   private startPolling(): void {
@@ -588,6 +636,19 @@ class RuckusBot {
     this.pollInterval = setInterval(() => {
       if (this.isRunning) {
         this.pollForMentions();
+      }
+    }, 2000);
+  }
+
+  /**
+   * Start polling for DMs
+   */
+  private startDMPolling(): void {
+    // Poll immediately, then every 2 seconds
+    this.pollForDMs();
+    this.dmPollInterval = setInterval(() => {
+      if (this.isRunning) {
+        this.pollForDMs();
       }
     }, 2000);
   }
@@ -604,6 +665,21 @@ class RuckusBot {
       await this.handleMentions(mentions);
     } catch (error) {
       console.error("Error polling for mentions:", error);
+    }
+  }
+
+  /**
+   * Poll for new DMs
+   */
+  private async pollForDMs(): Promise<void> {
+    try {
+      const messages = await this.client.query(api.bots.getDirectMessagesAsBot, {
+        apiKey: this.apiKey,
+        since: this.lastSeenDMTimestamp,
+      });
+      await this.handleDMs(messages);
+    } catch (error) {
+      console.error("Error polling for DMs:", error);
     }
   }
 
@@ -640,6 +716,42 @@ class RuckusBot {
     if (this.processedMentions.size > 1000) {
       const arr = Array.from(this.processedMentions);
       this.processedMentions = new Set(arr.slice(-500));
+    }
+  }
+
+  /**
+   * Handle incoming DMs
+   */
+  private async handleDMs(messages: DirectMessage[]): Promise<void> {
+    for (const msg of messages) {
+      // Skip if already processed or too old
+      if (
+        msg.createdAt <= this.lastSeenDMTimestamp ||
+        this.processedDMs.has(msg.messageId)
+      ) {
+        continue;
+      }
+
+      // Mark as processed
+      this.processedDMs.add(msg.messageId);
+
+      console.log(`💬 New DM from @${msg.senderUsername}`);
+      console.log(`   Message: "${msg.text}"`);
+
+      try {
+        await this.respondToDM(msg);
+      } catch (error) {
+        console.error(`   ❌ Error responding to DM:`, error);
+      }
+
+      // Update last seen timestamp
+      this.lastSeenDMTimestamp = Math.max(this.lastSeenDMTimestamp, msg.createdAt);
+    }
+
+    // Clean up old processed DMs (keep last 1000)
+    if (this.processedDMs.size > 1000) {
+      const arr = Array.from(this.processedDMs);
+      this.processedDMs = new Set(arr.slice(-500));
     }
   }
 
@@ -684,15 +796,15 @@ class RuckusBot {
           // Only create/update message once we have enough text or we're done
           if (text.length >= MIN_TEXT_LENGTH || isDone) {
             const displayText = isDone ? text : text + " ▌";
-            
+
             if (!messageId && !isCreatingMessage) {
               // Set guard before async operation to prevent concurrent creation
               isCreatingMessage = true;
-              
+
               // Create the message for the first time
               clearInterval(typingInterval);
               await this.clearTyping(mention.channelId).catch(() => { });
-              
+
               const result = await this.sendMessage(
                 mention.channelId,
                 displayText,
@@ -737,6 +849,101 @@ class RuckusBot {
       clearInterval(typingInterval);
       console.error(`   ❌ Error responding:`, error);
       await this.clearTyping(mention.channelId).catch(() => { });
+      throw error;
+    }
+  }
+
+  /**
+   * Respond to a DM using Claude CLI with streaming
+   */
+  private async respondToDM(dm: DirectMessage): Promise<void> {
+    // Log the incoming message to chat history
+    appendToChatLog(
+      "RECEIVED",
+      `DM:${dm.senderUsername}`,
+      dm.senderUsername,
+      dm.text
+    );
+
+    // Show typing indicator while waiting for response
+    await this.setTypingInConversation(dm.conversationId);
+
+    // Keep typing indicator alive with periodic refresh
+    const typingInterval = setInterval(() => {
+      this.setTypingInConversation(dm.conversationId).catch(() => { });
+    }, 3000);
+
+    try {
+      // For DMs, we use the full message text (no @mention to remove)
+      const messageText = dm.text.trim();
+
+      // Track message state - don't create message until we have enough text
+      let messageId: Id<"messages"> | null = null;
+      let isCreatingMessage = false;  // Guard against concurrent creation
+      const MIN_TEXT_LENGTH = 10;
+
+      // Generate AI response with streaming updates
+      const response = await generateAIResponseStreaming(
+        dm.senderUsername,
+        messageText,
+        `DM with ${dm.senderUsername}`,
+        async (text: string, isDone: boolean) => {
+          // Only create/update message once we have enough text or we're done
+          if (text.length >= MIN_TEXT_LENGTH || isDone) {
+            const displayText = isDone ? text : text + " ▌";
+
+            if (!messageId && !isCreatingMessage) {
+              // Set guard before async operation to prevent concurrent creation
+              isCreatingMessage = true;
+
+              // Create the message for the first time
+              clearInterval(typingInterval);
+              await this.clearTypingInConversation(dm.conversationId).catch(() => { });
+
+              const result = await this.sendDM(
+                dm.conversationId,
+                displayText,
+                dm.messageId
+              );
+              messageId = result.messageId;
+              console.log(`   📝 Created streaming DM: ${messageId}`);
+            } else if (messageId) {
+              // Update existing message
+              try {
+                await this.updateMessage(messageId, displayText);
+                if (!isDone) {
+                  process.stdout.write(".");  // Progress indicator
+                }
+              } catch (err) {
+                console.error("\n   ⚠️  Failed to update DM:", err);
+              }
+            }
+            // If !messageId && isCreatingMessage, skip - another handler is creating it
+          }
+        }
+      );
+
+      // If we never created a message (response was very short), create it now
+      // Also check isCreatingMessage in case a creation is still in flight
+      if (!messageId && !isCreatingMessage) {
+        clearInterval(typingInterval);
+        await this.clearTypingInConversation(dm.conversationId).catch(() => { });
+        await this.sendDM(dm.conversationId, response, dm.messageId);
+      }
+
+      // Log the outgoing response to chat history
+      appendToChatLog(
+        "SENT",
+        `DM:${dm.senderUsername}`,
+        this.botInfo!.username,
+        response
+      );
+
+      console.log(`\n   ✅ Responded to DM from @${dm.senderUsername}\n`);
+    } catch (error) {
+      clearInterval(typingInterval);
+      console.error(`   ❌ Error responding to DM:`, error);
+      await this.clearTypingInConversation(dm.conversationId).catch(() => { });
       throw error;
     }
   }
@@ -792,6 +999,42 @@ class RuckusBot {
   }
 
   /**
+   * Send a DM to a conversation (with optional reply reference)
+   */
+  async sendDM(
+    conversationId: Id<"conversations">,
+    text: string,
+    replyToMessageId?: Id<"messages">
+  ): Promise<{ messageId: Id<"messages"> }> {
+    return this.client.mutation(api.bots.sendMessageToConversationAsBot, {
+      apiKey: this.apiKey,
+      conversationId,
+      text,
+      replyToMessageId,
+    });
+  }
+
+  /**
+   * Set typing indicator in a conversation
+   */
+  async setTypingInConversation(conversationId: Id<"conversations">): Promise<void> {
+    await this.client.mutation(api.bots.setTypingInConversationAsBot, {
+      apiKey: this.apiKey,
+      conversationId,
+    });
+  }
+
+  /**
+   * Clear typing indicator in a conversation
+   */
+  async clearTypingInConversation(conversationId: Id<"conversations">): Promise<void> {
+    await this.client.mutation(api.bots.clearTypingInConversationAsBot, {
+      apiKey: this.apiKey,
+      conversationId,
+    });
+  }
+
+  /**
    * Helper to sleep for a given number of milliseconds
    */
   private sleep(ms: number): Promise<void> {
@@ -801,15 +1044,29 @@ class RuckusBot {
   /**
    * Stop the bot and clean up
    */
-  stop(): void {
+  async stop(): Promise<void> {
     console.log("\n🛑 Stopping bot...");
     this.isRunning = false;
     if (this.pollInterval) {
       clearInterval(this.pollInterval);
     }
+    if (this.dmPollInterval) {
+      clearInterval(this.dmPollInterval);
+    }
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
     }
+
+    // Mark bot as offline immediately
+    try {
+      await this.client.mutation(api.bots.goOfflineAsBot, {
+        apiKey: this.apiKey,
+      });
+      console.log("📴 Bot marked as offline");
+    } catch (error) {
+      console.error("⚠️  Failed to mark bot as offline:", error);
+    }
+
     console.log("👋 Goodbye!");
   }
 }
@@ -831,13 +1088,13 @@ async function main(): Promise<void> {
   const bot = new RuckusBot(CONVEX_URL, credentials.apiKey);
 
   // Handle graceful shutdown
-  process.on("SIGINT", () => {
-    bot.stop();
+  process.on("SIGINT", async () => {
+    await bot.stop();
     process.exit(0);
   });
 
-  process.on("SIGTERM", () => {
-    bot.stop();
+  process.on("SIGTERM", async () => {
+    await bot.stop();
     process.exit(0);
   });
 

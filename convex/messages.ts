@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { canAccessChannel } from "./channels";
 
 // Check if message text contains bot mentions (usernames ending in _bot)
 function hasBotMentions(text: string): boolean {
@@ -17,7 +18,8 @@ export const generateUploadUrl = mutation({
 
 export const sendMessage = mutation({
   args: {
-    channelId: v.id("channels"),
+    channelId: v.optional(v.id("channels")),
+    conversationId: v.optional(v.id("conversations")),
     userId: v.id("users"),
     text: v.string(),
     parentMessageId: v.optional(v.id("messages")),
@@ -30,6 +32,22 @@ export const sendMessage = mutation({
     }))),
   },
   handler: async (ctx, args) => {
+    // Validate that exactly one of channelId or conversationId is provided
+    if (!args.channelId && !args.conversationId) {
+      throw new Error("Either channelId or conversationId must be provided");
+    }
+    if (args.channelId && args.conversationId) {
+      throw new Error("Cannot specify both channelId and conversationId");
+    }
+
+    // Check access for private channels
+    if (args.channelId) {
+      const hasAccess = await canAccessChannel(ctx, args.channelId, args.userId);
+      if (!hasAccess) {
+        throw new Error("You do not have access to this channel");
+      }
+    }
+
     const text = args.text.trim();
     if (text.length === 0 && (!args.attachments || args.attachments.length === 0)) {
       throw new Error("Message cannot be empty");
@@ -61,10 +79,14 @@ export const sendMessage = mutation({
     }
 
     let channelId = args.channelId;
+    let conversationId = args.conversationId;
+
     if (args.parentMessageId) {
       const parent = await ctx.db.get("messages", args.parentMessageId);
       if (!parent) throw new Error("Parent message not found");
+      // Inherit context from parent message
       channelId = parent.channelId;
+      conversationId = parent.conversationId;
       if (parent.parentMessageId) {
         throw new Error(
           "Cannot reply to a thread reply — reply to the parent message instead"
@@ -81,13 +103,18 @@ export const sendMessage = mutation({
     if (args.replyToMessageId) {
       const replyTarget = await ctx.db.get("messages", args.replyToMessageId);
       if (!replyTarget) throw new Error("Reply target message not found");
-      if (replyTarget.channelId !== channelId) {
+      // Check context matches
+      if (channelId && replyTarget.channelId !== channelId) {
         throw new Error("Cannot reply to a message in a different channel");
+      }
+      if (conversationId && replyTarget.conversationId !== conversationId) {
+        throw new Error("Cannot reply to a message in a different conversation");
       }
     }
 
     const messageId = await ctx.db.insert("messages", {
-      channelId,
+      ...(channelId ? { channelId } : {}),
+      ...(conversationId ? { conversationId } : {}),
       userId: args.userId,
       text: messageText,
       ...(messageType ? { type: messageType } : {}),
@@ -113,8 +140,8 @@ export const sendMessage = mutation({
       });
     }
 
-    // Schedule webhook dispatch for bot mentions
-    if (hasBotMentions(messageText)) {
+    // Schedule webhook dispatch for bot mentions (only for channel messages)
+    if (channelId && hasBotMentions(messageText)) {
       const sender = await ctx.db.get("users", args.userId);
       const channel = await ctx.db.get("channels", channelId);
       if (sender && channel) {
@@ -131,29 +158,84 @@ export const sendMessage = mutation({
       }
     }
 
-    // Clear typing indicator for this user in this channel
-    const typingIndicator = await ctx.db
-      .query("typingIndicators")
-      .withIndex("by_channelId", (q) => q.eq("channelId", channelId))
-      .filter((q) => q.eq(q.field("userId"), args.userId))
-      .unique();
-
-    if (typingIndicator) {
-      await ctx.db.delete("typingIndicators", typingIndicator._id);
+    // Update conversation lastMessageTime if this is a DM
+    if (conversationId) {
+      await ctx.db.patch("conversations", conversationId, {
+        lastMessageTime: Date.now(),
+      });
     }
+
+    // Clear typing indicator for this user in this channel/conversation
+    if (channelId) {
+      const typingIndicator = await ctx.db
+        .query("typingIndicators")
+        .withIndex("by_channelId", (q) => q.eq("channelId", channelId))
+        .filter((q) => q.eq(q.field("userId"), args.userId))
+        .unique();
+
+      if (typingIndicator) {
+        await ctx.db.delete("typingIndicators", typingIndicator._id);
+      }
+    } else if (conversationId) {
+      const typingIndicator = await ctx.db
+        .query("typingIndicators")
+        .withIndex("by_conversationId", (q) => q.eq("conversationId", conversationId))
+        .filter((q) => q.eq(q.field("userId"), args.userId))
+        .unique();
+
+      if (typingIndicator) {
+        await ctx.db.delete("typingIndicators", typingIndicator._id);
+      }
+    }
+
+    return messageId;
   },
 });
 
 export const getMessages = query({
   args: {
-    channelId: v.id("channels"),
+    channelId: v.optional(v.id("channels")),
+    conversationId: v.optional(v.id("conversations")),
+    userId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const messages = await ctx.db
-      .query("messages")
-      .withIndex("by_channelId", (q) => q.eq("channelId", args.channelId))
-      .order("desc")
-      .take(200);
+    // Validate that exactly one of channelId or conversationId is provided
+    if (!args.channelId && !args.conversationId) {
+      throw new Error("Either channelId or conversationId must be provided");
+    }
+    if (args.channelId && args.conversationId) {
+      throw new Error("Cannot specify both channelId and conversationId");
+    }
+
+    // Check access for private channels
+    if (args.channelId) {
+      const channel = await ctx.db.get("channels", args.channelId);
+      if (channel?.isPrivate) {
+        if (!args.userId) {
+          // No userId provided, can't verify access to private channel
+          return [];
+        }
+        const hasAccess = await canAccessChannel(ctx, args.channelId, args.userId);
+        if (!hasAccess) {
+          return [];
+        }
+      }
+    }
+
+    let messages;
+    if (args.channelId) {
+      messages = await ctx.db
+        .query("messages")
+        .withIndex("by_channelId", (q) => q.eq("channelId", args.channelId))
+        .order("desc")
+        .take(200);
+    } else {
+      messages = await ctx.db
+        .query("messages")
+        .withIndex("by_conversationId", (q) => q.eq("conversationId", args.conversationId))
+        .order("desc")
+        .take(200);
+    }
 
     // Reverse to get ascending order
     messages.reverse();
@@ -167,12 +249,22 @@ export const getMessages = query({
       userIds.map((id) => ctx.db.get("users", id))
     );
     const userMap = new Map(
-      users
-        .filter((u) => u !== null)
-        .map((u) => [
-          u._id,
-          { _id: u._id, username: u.username, avatarColor: u.avatarColor, statusEmoji: u.statusEmoji, statusText: u.statusText, isBot: u.isBot },
-        ])
+      await Promise.all(
+        users
+          .filter((u) => u !== null)
+          .map(async (u) => [
+            u._id,
+            {
+              _id: u._id,
+              username: u.username,
+              avatarColor: u.avatarColor,
+              avatarUrl: u.avatarStorageId ? await ctx.storage.getUrl(u.avatarStorageId) : null,
+              statusEmoji: u.statusEmoji,
+              statusText: u.statusText,
+              isBot: u.isBot
+            },
+          ] as const)
+      )
     );
 
     // Fetch reactions for all messages in parallel
@@ -194,18 +286,21 @@ export const getMessages = query({
       const extraUsers = await Promise.all(
         missingUserIds.map((id) => ctx.db.get("users", id))
       );
-      for (const u of extraUsers) {
-        if (u) {
-          userMap.set(u._id, {
-            _id: u._id,
-            username: u.username,
-            avatarColor: u.avatarColor,
-            statusEmoji: u.statusEmoji,
-            statusText: u.statusText,
-            isBot: u.isBot,
-          });
-        }
-      }
+      await Promise.all(
+        extraUsers.map(async (u) => {
+          if (u) {
+            userMap.set(u._id, {
+              _id: u._id,
+              username: u.username,
+              avatarColor: u.avatarColor,
+              avatarUrl: u.avatarStorageId ? await ctx.storage.getUrl(u.avatarStorageId) : null,
+              statusEmoji: u.statusEmoji,
+              statusText: u.statusText,
+              isBot: u.isBot,
+            });
+          }
+        })
+      );
     }
 
     // Fetch reply-to messages info for inline replies
@@ -238,18 +333,21 @@ export const getMessages = query({
       const replyToUsers = await Promise.all(
         replyToUserIds.map((id) => ctx.db.get("users", id))
       );
-      for (const u of replyToUsers) {
-        if (u) {
-          userMap.set(u._id, {
-            _id: u._id,
-            username: u.username,
-            avatarColor: u.avatarColor,
-            statusEmoji: u.statusEmoji,
-            statusText: u.statusText,
-            isBot: u.isBot,
-          });
-        }
-      }
+      await Promise.all(
+        replyToUsers.map(async (u) => {
+          if (u) {
+            userMap.set(u._id, {
+              _id: u._id,
+              username: u.username,
+              avatarColor: u.avatarColor,
+              avatarUrl: u.avatarStorageId ? await ctx.storage.getUrl(u.avatarStorageId) : null,
+              statusEmoji: u.statusEmoji,
+              statusText: u.statusText,
+              isBot: u.isBot,
+            });
+          }
+        })
+      );
     }
 
     return Promise.all(topLevelMessages.map(async (m, i) => {
@@ -280,11 +378,11 @@ export const getMessages = query({
 
       const attachmentsWithUrls = m.attachments
         ? await Promise.all(
-            m.attachments.map(async (att) => ({
-              ...att,
-              url: await ctx.storage.getUrl(att.storageId),
-            }))
-          )
+          m.attachments.map(async (att) => ({
+            ...att,
+            url: await ctx.storage.getUrl(att.storageId),
+          }))
+        )
         : undefined;
 
       // Build reply-to info if this message is an inline reply
@@ -314,6 +412,7 @@ export const getMessages = query({
           _id: m.userId,
           username: "Unknown",
           avatarColor: "#6b7280",
+          avatarUrl: null,
         },
         reactions,
         attachments: attachmentsWithUrls,
@@ -347,12 +446,22 @@ export const getThreadMessages = query({
       userIds.map((id) => ctx.db.get("users", id))
     );
     const userMap = new Map(
-      users
-        .filter((u) => u !== null)
-        .map((u) => [
-          u._id,
-          { _id: u._id, username: u.username, avatarColor: u.avatarColor, statusEmoji: u.statusEmoji, statusText: u.statusText, isBot: u.isBot },
-        ])
+      await Promise.all(
+        users
+          .filter((u) => u !== null)
+          .map(async (u) => [
+            u._id,
+            {
+              _id: u._id,
+              username: u.username,
+              avatarColor: u.avatarColor,
+              avatarUrl: u.avatarStorageId ? await ctx.storage.getUrl(u.avatarStorageId) : null,
+              statusEmoji: u.statusEmoji,
+              statusText: u.statusText,
+              isBot: u.isBot
+            },
+          ] as const)
+      )
     );
 
     if (parentUser) {
@@ -360,6 +469,7 @@ export const getThreadMessages = query({
         _id: parentUser._id,
         username: parentUser.username,
         avatarColor: parentUser.avatarColor,
+        avatarUrl: parentUser.avatarStorageId ? await ctx.storage.getUrl(parentUser.avatarStorageId) : null,
         statusEmoji: parentUser.statusEmoji,
         statusText: parentUser.statusText,
         isBot: parentUser.isBot,
@@ -386,18 +496,21 @@ export const getThreadMessages = query({
       const reactorUsers = await Promise.all(
         missingReactorIds.map((id) => ctx.db.get("users", id))
       );
-      for (const u of reactorUsers) {
-        if (u) {
-          userMap.set(u._id, {
-            _id: u._id,
-            username: u.username,
-            avatarColor: u.avatarColor,
-            statusEmoji: u.statusEmoji,
-            statusText: u.statusText,
-            isBot: u.isBot,
-          });
-        }
-      }
+      await Promise.all(
+        reactorUsers.map(async (u) => {
+          if (u) {
+            userMap.set(u._id, {
+              _id: u._id,
+              username: u.username,
+              avatarColor: u.avatarColor,
+              avatarUrl: u.avatarStorageId ? await ctx.storage.getUrl(u.avatarStorageId) : null,
+              statusEmoji: u.statusEmoji,
+              statusText: u.statusText,
+              isBot: u.isBot,
+            });
+          }
+        })
+      );
     }
 
     async function formatMessage(
@@ -424,11 +537,11 @@ export const getThreadMessages = query({
 
       const attachmentsWithUrls = m!.attachments
         ? await Promise.all(
-            m!.attachments.map(async (att) => ({
-              ...att,
-              url: await ctx.storage.getUrl(att.storageId),
-            }))
-          )
+          m!.attachments.map(async (att) => ({
+            ...att,
+            url: await ctx.storage.getUrl(att.storageId),
+          }))
+        )
         : undefined;
 
       return {
@@ -443,6 +556,7 @@ export const getThreadMessages = query({
           _id: m!.userId,
           username: "Unknown",
           avatarColor: "#6b7280",
+          avatarUrl: null,
         },
         reactions: Array.from(emojiMap.entries()).map(([emoji, data]) => ({
           emoji,
@@ -511,7 +625,8 @@ export const getRecentMentions = query({
       (m) => m._creationTime > args.since && m.userId !== args.userId
     );
 
-    const channelIds = [...new Set(filtered.map((m) => m.channelId))];
+    // Get channel names for channel messages
+    const channelIds = [...new Set(filtered.map((m) => m.channelId).filter((id): id is NonNullable<typeof id> => id !== undefined))];
     const channels = await Promise.all(
       channelIds.map((id) => ctx.db.get("channels", id))
     );
@@ -521,10 +636,22 @@ export const getRecentMentions = query({
         .map((c) => [c._id, c.name])
     );
 
+    // Get conversation info for DM messages
+    const conversationIds = [...new Set(filtered.map((m) => m.conversationId).filter((id): id is NonNullable<typeof id> => id !== undefined))];
+    const conversations = await Promise.all(
+      conversationIds.map((id) => ctx.db.get("conversations", id))
+    );
+    const conversationMap = new Map(
+      conversations
+        .filter((c) => c !== null)
+        .map((c) => [c._id, c])
+    );
+
     return filtered.map((m) => ({
       _id: m._id,
       channelId: m.channelId,
-      channelName: channelMap.get(m.channelId) ?? "unknown",
+      conversationId: m.conversationId,
+      channelName: m.channelId ? (channelMap.get(m.channelId) ?? "unknown") : undefined,
       text: m.text,
       _creationTime: m._creationTime,
     }));

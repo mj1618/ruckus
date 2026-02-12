@@ -8,16 +8,24 @@ import { useUser } from "@/components/UserContext";
 import { MessageItem } from "@/components/MessageItem";
 
 interface MessageListProps {
-  channelId: Id<"channels">;
+  channelId?: Id<"channels">;
+  conversationId?: Id<"conversations">;
   onReplyInThread?: (messageId: Id<"messages">) => void;
   onReply?: (message: { _id: Id<"messages">; text: string; user: { username: string } }) => void;
 }
 
-export function MessageList({ channelId, onReplyInThread, onReply }: MessageListProps) {
-  const messages = useQuery(api.messages.getMessages, { channelId });
-  const pinnedMessageIds = useQuery(api.pins.getPinnedMessageIds, { channelId });
+export function MessageList({ channelId, conversationId, onReplyInThread, onReply }: MessageListProps) {
+  const messages = useQuery(
+    api.messages.getMessages,
+    channelId ? { channelId } : conversationId ? { conversationId } : "skip"
+  );
+  const pinnedMessageIds = useQuery(
+    api.pins.getPinnedMessageIds,
+    channelId ? { channelId } : conversationId ? { conversationId } : "skip"
+  );
   const { user } = useUser();
-  const markRead = useMutation(api.channelReads.markChannelRead);
+  const markChannelRead = useMutation(api.channelReads.markChannelRead);
+  const markConversationRead = useMutation(api.conversationReads.markConversationRead);
 
   const messageIds = useMemo(
     () => (messages ?? []).map((m) => m._id),
@@ -40,7 +48,13 @@ export function MessageList({ channelId, onReplyInThread, onReply }: MessageList
 
   const bookmarkedMessageIds = useQuery(
     api.bookmarks.getBookmarkedMessageIds,
-    user ? { userId: user._id, channelId } : "skip"
+    user
+      ? channelId
+        ? { userId: user._id, channelId }
+        : conversationId
+          ? { userId: user._id, conversationId }
+          : "skip"
+      : "skip"
   );
 
   const pinnedSet = useMemo(
@@ -67,10 +81,10 @@ export function MessageList({ channelId, onReplyInThread, onReply }: MessageList
     }
   }
 
-  // Reset scroll state when switching channels so we scroll to bottom on entry
+  // Reset scroll state when switching channels/conversations so we scroll to bottom on entry
   useEffect(() => {
     prevLengthRef.current = 0;
-  }, [channelId]);
+  }, [channelId, conversationId]);
 
   useEffect(() => {
     if (!messages) return;
@@ -87,11 +101,15 @@ export function MessageList({ channelId, onReplyInThread, onReply }: MessageList
     }
     prevLengthRef.current = messages.length;
 
-    // Mark channel as read when new messages arrive and user is near the bottom
+    // Mark channel/conversation as read when new messages arrive and user is near the bottom
     if (user && isAtBottom) {
-      markRead({ userId: user._id, channelId });
+      if (channelId) {
+        markChannelRead({ userId: user._id, channelId });
+      } else if (conversationId) {
+        markConversationRead({ userId: user._id, conversationId });
+      }
     }
-  }, [messages]);
+  }, [messages, channelId, conversationId, user]);
 
   if (messages === undefined) {
     return (

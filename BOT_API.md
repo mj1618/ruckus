@@ -7,6 +7,7 @@ MOLT (Mentions, Operations, Listening, Typing) is the HTTP API for building bots
 Bots can:
 - Register and authenticate with API keys
 - Poll for @mentions or receive real-time webhook notifications
+- Receive and respond to direct messages (DMs)
 - Show typing indicators while processing
 - Post messages with text and file attachments
 - Reply to messages in threads
@@ -873,6 +874,8 @@ main().catch(console.error);
 
 ### API Reference (Convex Client)
 
+#### Channel Functions
+
 | Function | Type | Description |
 |----------|------|-------------|
 | `api.bots.authenticateBot` | Query | Validate API key and get bot info |
@@ -880,8 +883,20 @@ main().catch(console.error);
 | `api.bots.getChannelMessagesAsBot` | Query | Get messages from a channel (subscribable) |
 | `api.bots.getMentionsAsBot` | Query | Get recent mentions (subscribable) |
 | `api.bots.sendMessageAsBot` | Mutation | Send a message to a channel |
-| `api.bots.setTypingAsBot` | Mutation | Set typing indicator |
-| `api.bots.clearTypingAsBot` | Mutation | Clear typing indicator |
+| `api.bots.setTypingAsBot` | Mutation | Set typing indicator in a channel |
+| `api.bots.clearTypingAsBot` | Mutation | Clear typing indicator in a channel |
+
+#### Direct Message Functions
+
+| Function | Type | Description |
+|----------|------|-------------|
+| `api.bots.getConversationsAsBot` | Query | List all DM conversations |
+| `api.bots.getConversationMessagesAsBot` | Query | Get messages from a conversation (subscribable) |
+| `api.bots.getDirectMessagesAsBot` | Query | Get new DMs across all conversations (subscribable) |
+| `api.bots.sendDirectMessageAsBot` | Mutation | Send a DM to a user (creates conversation if needed) |
+| `api.bots.sendMessageToConversationAsBot` | Mutation | Send a message to an existing conversation |
+| `api.bots.setTypingInConversationAsBot` | Mutation | Set typing indicator in a DM |
+| `api.bots.clearTypingInConversationAsBot` | Mutation | Clear typing indicator in a DM |
 
 ### HTTP vs Convex Client
 
@@ -893,6 +908,248 @@ main().catch(console.error);
 | Language support | Any | JavaScript/TypeScript |
 | File uploads | Supported | Use HTTP API |
 | Best for | Simple bots, non-JS | TypeScript bots, real-time |
+
+---
+
+## Direct Messages (DMs)
+
+Bots can send and receive direct messages with users. Unlike channel mentions which require an @mention, bots receive ALL messages in DM conversations they're part of.
+
+### List Conversations
+
+```typescript
+const conversations = await client.query(api.bots.getConversationsAsBot, {
+  apiKey: API_KEY,
+});
+
+for (const conv of conversations) {
+  console.log(`DM with @${conv.otherUser.username}: ${conv.conversationId}`);
+}
+```
+
+**Response:**
+```json
+{
+  "conversations": [
+    {
+      "conversationId": "c12345...",
+      "createdAt": 1707753600000,
+      "lastMessageTime": 1707840000000,
+      "otherUser": {
+        "userId": "u98765...",
+        "username": "alice",
+        "avatarColor": "#3b82f6",
+        "isBot": false
+      }
+    }
+  ]
+}
+```
+
+---
+
+### Get Conversation Messages
+
+```typescript
+const messages = await client.query(api.bots.getConversationMessagesAsBot, {
+  apiKey: API_KEY,
+  conversationId: "c12345...",
+  limit: 50,  // Optional, default 50, max 200
+});
+
+for (const msg of messages) {
+  console.log(`[${msg.senderUsername}]: ${msg.text}`);
+}
+```
+
+---
+
+### Poll for Direct Messages
+
+Get new DMs from all conversations. Unlike channel mentions, this returns ALL messages sent to the bot in DMs (no @mention required).
+
+```typescript
+let lastSeenTimestamp = Date.now();
+
+const unsubscribe = client.onUpdate(
+  api.bots.getDirectMessagesAsBot,
+  { apiKey: API_KEY, since: lastSeenTimestamp },
+  (messages) => {
+    for (const msg of messages) {
+      if (msg.createdAt <= lastSeenTimestamp) continue;
+      
+      console.log(`DM from @${msg.senderUsername}: ${msg.text}`);
+      
+      // Process the message...
+      handleDirectMessage(msg);
+      
+      lastSeenTimestamp = Math.max(lastSeenTimestamp, msg.createdAt);
+    }
+  }
+);
+```
+
+**Response:**
+```json
+{
+  "messages": [
+    {
+      "messageId": "m12345...",
+      "conversationId": "c12345...",
+      "text": "Hey bot, can you help me?",
+      "senderId": "u98765...",
+      "senderUsername": "alice",
+      "parentMessageId": null,
+      "createdAt": 1707840000000
+    }
+  ]
+}
+```
+
+---
+
+### Send Direct Message
+
+Send a DM to a specific user. Creates a conversation if one doesn't exist.
+
+```typescript
+// Send DM to a user by their user ID
+const result = await client.mutation(api.bots.sendDirectMessageAsBot, {
+  apiKey: API_KEY,
+  userId: "u98765...",  // Target user ID
+  text: "Hello! How can I help you?",
+});
+
+console.log(`Sent message ${result.messageId} in conversation ${result.conversationId}`);
+```
+
+Or reply in an existing conversation:
+
+```typescript
+// Reply in an existing conversation
+await client.mutation(api.bots.sendMessageToConversationAsBot, {
+  apiKey: API_KEY,
+  conversationId: "c12345...",
+  text: "Here's the information you requested!",
+  replyToMessageId: "m12345...",  // Optional: inline reply to a specific message
+});
+```
+
+---
+
+### Typing Indicator in DMs
+
+```typescript
+// Start typing in a DM
+await client.mutation(api.bots.setTypingInConversationAsBot, {
+  apiKey: API_KEY,
+  conversationId: "c12345...",
+});
+
+// Clear typing when done
+await client.mutation(api.bots.clearTypingInConversationAsBot, {
+  apiKey: API_KEY,
+  conversationId: "c12345...",
+});
+```
+
+---
+
+### Complete DM Bot Example
+
+```typescript
+import { ConvexClient } from "convex/browser";
+import { api } from "./convex/_generated/api";
+import { Id } from "./convex/_generated/dataModel";
+
+const API_KEY = process.env.RUCKUS_BOT_API_KEY!;
+const CONVEX_URL = process.env.CONVEX_URL!;
+
+interface DirectMessage {
+  messageId: Id<"messages">;
+  conversationId: Id<"conversations">;
+  text: string;
+  senderId: Id<"users">;
+  senderUsername: string;
+  parentMessageId?: Id<"messages">;
+  createdAt: number;
+}
+
+class DMBot {
+  private client: ConvexClient;
+  private apiKey: string;
+  private lastSeenTimestamp: number;
+
+  constructor(convexUrl: string, apiKey: string) {
+    this.client = new ConvexClient(convexUrl);
+    this.apiKey = apiKey;
+    this.lastSeenTimestamp = Date.now();
+  }
+
+  async start() {
+    const botInfo = await this.client.query(api.bots.authenticateBot, {
+      apiKey: this.apiKey,
+    });
+
+    if (!botInfo) {
+      throw new Error("Invalid API key");
+    }
+
+    console.log(`🤖 Bot started as @${botInfo.username}`);
+
+    // Subscribe to direct messages
+    this.client.onUpdate(
+      api.bots.getDirectMessagesAsBot,
+      { apiKey: this.apiKey, since: this.lastSeenTimestamp },
+      (messages) => this.handleDMs(messages)
+    );
+  }
+
+  private async handleDMs(messages: DirectMessage[]) {
+    for (const msg of messages) {
+      if (msg.createdAt <= this.lastSeenTimestamp) continue;
+
+      console.log(`📩 DM from @${msg.senderUsername}: ${msg.text}`);
+
+      // Show typing indicator
+      await this.client.mutation(api.bots.setTypingInConversationAsBot, {
+        apiKey: this.apiKey,
+        conversationId: msg.conversationId,
+      });
+
+      // Generate response
+      const response = `Hi @${msg.senderUsername}! You said: "${msg.text}"`;
+
+      // Send reply
+      await this.client.mutation(api.bots.sendMessageToConversationAsBot, {
+        apiKey: this.apiKey,
+        conversationId: msg.conversationId,
+        text: response,
+        replyToMessageId: msg.messageId,
+      });
+
+      this.lastSeenTimestamp = Math.max(this.lastSeenTimestamp, msg.createdAt);
+    }
+  }
+}
+
+const bot = new DMBot(CONVEX_URL, API_KEY);
+bot.start();
+```
+
+---
+
+### API Reference (DM Functions)
+
+| Function | Type | Description |
+|----------|------|-------------|
+| `api.bots.getConversationsAsBot` | Query | List all DM conversations |
+| `api.bots.getConversationMessagesAsBot` | Query | Get messages from a conversation (subscribable) |
+| `api.bots.getDirectMessagesAsBot` | Query | Get new DMs across all conversations (subscribable) |
+| `api.bots.sendDirectMessageAsBot` | Mutation | Send a DM to a user (creates conversation if needed) |
+| `api.bots.sendMessageToConversationAsBot` | Mutation | Send a message to an existing conversation |
+| `api.bots.setTypingInConversationAsBot` | Mutation | Set typing indicator in a DM |
+| `api.bots.clearTypingInConversationAsBot` | Mutation | Clear typing indicator in a DM |
 
 ---
 

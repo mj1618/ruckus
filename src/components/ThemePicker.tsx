@@ -76,6 +76,162 @@ const THEMES: {
       muted: "#a89888",
     },
   },
+  {
+    id: "ocean",
+    label: "Ocean",
+    icon: "🌊",
+    preview: {
+      bg: "#0a1628",
+      surface: "#0f2137",
+      accent: "#06b6d4",
+      text: "#e0f2fe",
+      muted: "#7aa2c4",
+    },
+  },
+  {
+    id: "rose",
+    label: "Rose",
+    icon: "🌸",
+    preview: {
+      bg: "#1a1318",
+      surface: "#241c22",
+      accent: "#f472b6",
+      text: "#fce7f3",
+      muted: "#b58a9f",
+    },
+  },
+  {
+    id: "dracula",
+    label: "Dracula",
+    icon: "🧛",
+    preview: {
+      bg: "#21222c",
+      surface: "#282a36",
+      accent: "#bd93f9",
+      text: "#f8f8f2",
+      muted: "#6272a4",
+    },
+  },
+  {
+    id: "nord",
+    label: "Nord",
+    icon: "❄️",
+    preview: {
+      bg: "#2e3440",
+      surface: "#3b4252",
+      accent: "#88c0d0",
+      text: "#eceff4",
+      muted: "#7b88a1",
+    },
+  },
+  {
+    id: "coffee",
+    label: "Coffee",
+    icon: "☕",
+    preview: {
+      bg: "#1c1816",
+      surface: "#2a2420",
+      accent: "#d4a574",
+      text: "#f5ebe0",
+      muted: "#9c8b7a",
+    },
+  },
+  {
+    id: "solarized-dark",
+    label: "Solarized Dark",
+    icon: "🔆",
+    preview: {
+      bg: "#002b36",
+      surface: "#073642",
+      accent: "#268bd2",
+      text: "#fdf6e3",
+      muted: "#839496",
+    },
+  },
+  {
+    id: "solarized-light",
+    label: "Solarized Light",
+    icon: "🌤️",
+    preview: {
+      bg: "#fdf6e3",
+      surface: "#eee8d5",
+      accent: "#268bd2",
+      text: "#073642",
+      muted: "#657b83",
+    },
+  },
+  {
+    id: "monokai",
+    label: "Monokai",
+    icon: "🎨",
+    preview: {
+      bg: "#1e1f1c",
+      surface: "#272822",
+      accent: "#a6e22e",
+      text: "#f8f8f2",
+      muted: "#75715e",
+    },
+  },
+  {
+    id: "gruvbox",
+    label: "Gruvbox",
+    icon: "🟤",
+    preview: {
+      bg: "#1d2021",
+      surface: "#282828",
+      accent: "#fabd2f",
+      text: "#ebdbb2",
+      muted: "#928374",
+    },
+  },
+  {
+    id: "synthwave",
+    label: "Synthwave",
+    icon: "🌆",
+    preview: {
+      bg: "#1a1025",
+      surface: "#241b2f",
+      accent: "#f92aad",
+      text: "#f4eeff",
+      muted: "#9d8bba",
+    },
+  },
+  {
+    id: "catppuccin",
+    label: "Catppuccin",
+    icon: "🐱",
+    preview: {
+      bg: "#1e1e2e",
+      surface: "#313244",
+      accent: "#cba6f7",
+      text: "#cdd6f4",
+      muted: "#6c7086",
+    },
+  },
+  {
+    id: "tokyo-night",
+    label: "Tokyo Night",
+    icon: "🗼",
+    preview: {
+      bg: "#16161e",
+      surface: "#1a1b26",
+      accent: "#7aa2f7",
+      text: "#c0caf5",
+      muted: "#565f89",
+    },
+  },
+  {
+    id: "one-dark",
+    label: "One Dark",
+    icon: "⚛️",
+    preview: {
+      bg: "#21252b",
+      surface: "#282c34",
+      accent: "#61afef",
+      text: "#abb2bf",
+      muted: "#5c6370",
+    },
+  },
 ];
 
 interface ThemePickerProps {
@@ -129,6 +285,29 @@ export function ThemePicker({ onClose }: ThemePickerProps) {
                   : "border-border hover:border-text-muted"
               }`}
             >
+              {/* Selected checkmark - fixed to top right */}
+              {theme === t.id && (
+                <div
+                  className="absolute top-1.5 right-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full"
+                  style={{ backgroundColor: t.preview.accent }}
+                >
+                  <svg
+                    className="h-3 w-3"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M2.5 6L5 8.5L9.5 3.5"
+                      stroke="white"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+              )}
+
               {/* Mini preview */}
               <div
                 className="aspect-[4/3] p-2"
@@ -192,14 +371,6 @@ export function ThemePicker({ onClose }: ThemePickerProps) {
                 >
                   {t.label}
                 </span>
-                {theme === t.id && (
-                  <span
-                    className="ml-auto text-xs"
-                    style={{ color: t.preview.accent }}
-                  >
-                    ✓
-                  </span>
-                )}
               </div>
             </button>
           ))}

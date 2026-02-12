@@ -10,6 +10,8 @@ interface ChannelHeaderProps {
     _id: Id<"channels">;
     name: string;
     topic?: string;
+    isPrivate?: boolean;
+    isAdmin?: boolean;
   };
   onToggleSidebar: () => void;
   onToggleUsers: () => void;
@@ -19,9 +21,11 @@ interface ChannelHeaderProps {
   showSearch?: boolean;
   onToggleBookmarks: () => void;
   showBookmarks?: boolean;
+  onToggleMembers?: () => void;
+  showMembers?: boolean;
 }
 
-export function ChannelHeader({ channel, onToggleSidebar, onToggleUsers, onTogglePins, showPins, onToggleSearch, showSearch, onToggleBookmarks, showBookmarks }: ChannelHeaderProps) {
+export function ChannelHeader({ channel, onToggleSidebar, onToggleUsers, onTogglePins, showPins, onToggleSearch, showSearch, onToggleBookmarks, showBookmarks, onToggleMembers, showMembers }: ChannelHeaderProps) {
   const [isEditingTopic, setIsEditingTopic] = useState(false);
   const [topicInput, setTopicInput] = useState(channel.topic ?? "");
   const updateTopic = useMutation(api.channels.updateTopic);
@@ -44,7 +48,16 @@ export function ChannelHeader({ channel, onToggleSidebar, onToggleUsers, onToggl
       </button>
 
       <div className="min-w-0 flex-1">
-        <h2 className="text-sm font-bold text-text"># {channel.name}</h2>
+        <h2 className="flex items-center gap-1 text-sm font-bold text-text">
+          {channel.isPrivate ? (
+            <svg className="h-3.5 w-3.5 text-text-muted" viewBox="0 0 16 16" fill="currentColor">
+              <path fillRule="evenodd" d="M4 6V4a4 4 0 1 1 8 0v2h1a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h1zm2-2a2 2 0 1 1 4 0v2H6V4z" clipRule="evenodd" />
+            </svg>
+          ) : (
+            "#"
+          )}
+          {channel.name}
+        </h2>
         {isEditingTopic ? (
           <input
             type="text"
@@ -71,6 +84,17 @@ export function ChannelHeader({ channel, onToggleSidebar, onToggleUsers, onToggl
           </button>
         )}
       </div>
+
+      {/* Members button (private channel admins only) */}
+      {channel.isPrivate && channel.isAdmin && onToggleMembers && (
+        <button
+          onClick={onToggleMembers}
+          className={`ml-3 text-sm ${showMembers ? "text-accent" : "text-text-muted hover:text-text"}`}
+          title="Manage members"
+        >
+          👥
+        </button>
+      )}
 
       {/* Search button */}
       <button

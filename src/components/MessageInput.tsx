@@ -55,8 +55,10 @@ interface ReplyToMessage {
 }
 
 interface MessageInputProps {
-  channelId: Id<"channels">;
-  channelName: string;
+  channelId?: Id<"channels">;
+  channelName?: string;
+  conversationId?: Id<"conversations">;
+  conversationName?: string;
   parentMessageId?: Id<"messages">;
   replyToMessage?: ReplyToMessage;
   onCancelReply?: () => void;
@@ -65,7 +67,8 @@ interface MessageInputProps {
   onDroppedFilesHandled?: () => void;
 }
 
-export function MessageInput({ channelId, channelName, parentMessageId, replyToMessage, onCancelReply, placeholder, droppedFiles, onDroppedFilesHandled }: MessageInputProps) {
+export function MessageInput({ channelId, channelName, conversationId, conversationName, parentMessageId, replyToMessage, onCancelReply, placeholder, droppedFiles, onDroppedFilesHandled }: MessageInputProps) {
+  const contextName = channelName ?? conversationName ?? "Unknown";
   const { user } = useUser();
   const [text, setText] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -229,9 +232,18 @@ export function MessageInput({ channelId, channelName, parentMessageId, replyToM
     const filesToUpload = [...pendingFiles];
     setPendingFiles([]);
     setFileError(null);
+    // Build context for messages
+    const messageContext = channelId ? { channelId } : conversationId ? { conversationId } : null;
+    if (!messageContext) {
+      throw new Error("No channel or conversation context");
+    }
+
     try {
-      // Handle /poll command
+      // Handle /poll command (only in channels)
       if (trimmed.toLowerCase().startsWith("/poll ")) {
+        if (!channelId) {
+          throw new Error("Polls are only available in channels");
+        }
         const rest = trimmed.slice(6);
         const parts = rest.split("|").map((s) => s.trim()).filter(Boolean);
         if (parts.length < 3) {
@@ -271,7 +283,7 @@ export function MessageInput({ channelId, channelName, parentMessageId, replyToM
         }
         // Send action message about status change
         await sendMessage({
-          channelId,
+          ...messageContext,
           userId: user._id,
           text: statusStr
             ? `/me set their status to ${statusStr}`
@@ -285,7 +297,7 @@ export function MessageInput({ channelId, channelName, parentMessageId, replyToM
         if (results.length === 0) throw new Error("No GIFs found for: " + giphyQuery);
         const gif = results[Math.floor(Math.random() * results.length)];
         await sendMessage({
-          channelId,
+          ...messageContext,
           userId: user._id,
           text: `![GIF](${gif.url})`,
           ...(parentMessageId ? { parentMessageId } : {}),
@@ -299,7 +311,7 @@ export function MessageInput({ channelId, channelName, parentMessageId, replyToM
         }
         // /me and /shrug are handled server-side; everything else is a normal message
         await sendMessage({
-          channelId,
+          ...messageContext,
           userId: user._id,
           text: trimmed || " ",
           ...(parentMessageId ? { parentMessageId } : {}),
@@ -320,9 +332,11 @@ export function MessageInput({ channelId, channelName, parentMessageId, replyToM
 
   async function handleGifSelect(gifUrl: string) {
     if (!user) return;
+    const messageContext = channelId ? { channelId } : conversationId ? { conversationId } : null;
+    if (!messageContext) return;
     setShowGifPicker(false);
     await sendMessage({
-      channelId,
+      ...messageContext,
       userId: user._id,
       text: `![GIF](${gifUrl})`,
       ...(parentMessageId ? { parentMessageId } : {}),
@@ -452,10 +466,18 @@ export function MessageInput({ channelId, channelName, parentMessageId, replyToM
       const now = Date.now();
       if (now - lastTypingRef.current > 2000) {
         lastTypingRef.current = now;
-        setTyping({ channelId, userId: user._id });
+        if (channelId) {
+          setTyping({ channelId, userId: user._id });
+        } else if (conversationId) {
+          setTyping({ conversationId, userId: user._id });
+        }
       }
     } else if (user && !value.trim()) {
-      clearTyping({ channelId, userId: user._id });
+      if (channelId) {
+        clearTyping({ channelId, userId: user._id });
+      } else if (conversationId) {
+        clearTyping({ conversationId, userId: user._id });
+      }
     }
   };
 
@@ -553,7 +575,7 @@ export function MessageInput({ channelId, channelName, parentMessageId, replyToM
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          placeholder={placeholder ?? `Message #${channelName}`}
+          placeholder={placeholder ?? (channelName ? `Message #${channelName}` : `Message ${conversationName}`)}
           maxLength={4000}
           rows={1}
           className="max-h-[120px] min-h-[24px] flex-1 resize-none bg-transparent text-sm text-text placeholder-text-muted outline-none"

@@ -9,6 +9,7 @@ import { MessageText } from "@/components/MessageText";
 import { PollMessage } from "@/components/PollMessage";
 import { LinkPreview } from "@/components/LinkPreview";
 import { MessageAttachments } from "@/components/MessageAttachments";
+import { Avatar } from "@/components/Avatar";
 
 interface MessageItemProps {
   message: {
@@ -29,6 +30,7 @@ interface MessageItemProps {
       _id: Id<"users">;
       username: string;
       avatarColor: string;
+      avatarUrl?: string | null;
       statusEmoji?: string;
       statusText?: string;
       isBot?: boolean;
@@ -492,12 +494,13 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
         onTouchCancel={handleTouchEnd}
       >
         {hoverToolbar}
-        <div
-          className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm"
-          style={{ backgroundColor: message.user.avatarColor }}
-        >
-          {message.user.username[0].toUpperCase()}
-        </div>
+        <Avatar
+          username={message.user.username}
+          avatarColor={message.user.avatarColor}
+          avatarUrl={message.user.avatarUrl}
+          size="lg"
+          className="mt-0.5 h-10 w-10 shrink-0 text-sm"
+        />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
             <span className="text-sm font-bold text-text">{message.user.username}</span>
@@ -561,12 +564,13 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
       onTouchCancel={handleTouchEnd}
     >
       {!isEditing && hoverToolbar}
-      <div
-        className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm"
-        style={{ backgroundColor: message.user.avatarColor }}
-      >
-        {message.user.username[0].toUpperCase()}
-      </div>
+      <Avatar
+        username={message.user.username}
+        avatarColor={message.user.avatarColor}
+        avatarUrl={message.user.avatarUrl}
+        size="lg"
+        className="mt-0.5 h-10 w-10 shrink-0 text-sm"
+      />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
           <span className="text-sm font-bold text-text">{message.user.username}</span>

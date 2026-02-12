@@ -24,7 +24,8 @@ export const pinMessage = mutation({
 
     await ctx.db.insert("pinnedMessages", {
       messageId: args.messageId,
-      channelId: message.channelId,
+      ...(message.channelId ? { channelId: message.channelId } : {}),
+      ...(message.conversationId ? { conversationId: message.conversationId } : {}),
       pinnedBy: args.userId,
       pinnedAt: Date.now(),
     });
@@ -50,13 +51,30 @@ export const unpinMessage = mutation({
 
 export const getPinnedMessages = query({
   args: {
-    channelId: v.id("channels"),
+    channelId: v.optional(v.id("channels")),
+    conversationId: v.optional(v.id("conversations")),
   },
   handler: async (ctx, args) => {
-    const pins = await ctx.db
-      .query("pinnedMessages")
-      .withIndex("by_channelId", (q) => q.eq("channelId", args.channelId))
-      .collect();
+    // Validate that exactly one of channelId or conversationId is provided
+    if (!args.channelId && !args.conversationId) {
+      throw new Error("Either channelId or conversationId must be provided");
+    }
+    if (args.channelId && args.conversationId) {
+      throw new Error("Cannot specify both channelId and conversationId");
+    }
+
+    let pins;
+    if (args.channelId) {
+      pins = await ctx.db
+        .query("pinnedMessages")
+        .withIndex("by_channelId", (q) => q.eq("channelId", args.channelId))
+        .collect();
+    } else {
+      pins = await ctx.db
+        .query("pinnedMessages")
+        .withIndex("by_conversationId", (q) => q.eq("conversationId", args.conversationId))
+        .collect();
+    }
 
     // Fetch messages, users, and reactions in parallel
     const results = await Promise.all(
@@ -107,11 +125,11 @@ export const getPinnedMessages = query({
 
         const attachmentsWithUrls = message.attachments
           ? await Promise.all(
-              message.attachments.map(async (att) => ({
-                ...att,
-                url: await ctx.storage.getUrl(att.storageId),
-              }))
-            )
+            message.attachments.map(async (att) => ({
+              ...att,
+              url: await ctx.storage.getUrl(att.storageId),
+            }))
+          )
           : undefined;
 
         return {
@@ -130,15 +148,17 @@ export const getPinnedMessages = query({
             attachments: attachmentsWithUrls,
             user: user
               ? {
-                  _id: user._id,
-                  username: user.username,
-                  avatarColor: user.avatarColor,
-                }
+                _id: user._id,
+                username: user.username,
+                avatarColor: user.avatarColor,
+                avatarUrl: user.avatarStorageId ? await ctx.storage.getUrl(user.avatarStorageId) : null,
+              }
               : {
-                  _id: message.userId,
-                  username: "Unknown",
-                  avatarColor: "#6b7280",
-                },
+                _id: message.userId,
+                username: "Unknown",
+                avatarColor: "#6b7280",
+                avatarUrl: null,
+              },
             reactions: Array.from(emojiMap.entries()).map(([emoji, data]) => ({
               emoji,
               count: data.userIds.length,
@@ -159,13 +179,30 @@ export const getPinnedMessages = query({
 
 export const getPinnedMessageIds = query({
   args: {
-    channelId: v.id("channels"),
+    channelId: v.optional(v.id("channels")),
+    conversationId: v.optional(v.id("conversations")),
   },
   handler: async (ctx, args) => {
-    const pins = await ctx.db
-      .query("pinnedMessages")
-      .withIndex("by_channelId", (q) => q.eq("channelId", args.channelId))
-      .collect();
+    // Validate that exactly one of channelId or conversationId is provided
+    if (!args.channelId && !args.conversationId) {
+      throw new Error("Either channelId or conversationId must be provided");
+    }
+    if (args.channelId && args.conversationId) {
+      throw new Error("Cannot specify both channelId and conversationId");
+    }
+
+    let pins;
+    if (args.channelId) {
+      pins = await ctx.db
+        .query("pinnedMessages")
+        .withIndex("by_channelId", (q) => q.eq("channelId", args.channelId))
+        .collect();
+    } else {
+      pins = await ctx.db
+        .query("pinnedMessages")
+        .withIndex("by_conversationId", (q) => q.eq("conversationId", args.conversationId))
+        .collect();
+    }
 
     return pins.map((p) => p.messageId);
   },

@@ -5,10 +5,12 @@ import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { useUser } from "@/components/UserContext";
 import { MessageText } from "@/components/MessageText";
+import { Avatar } from "@/components/Avatar";
 
 interface BookmarkedMessagesProps {
   onClose: () => void;
   onNavigateToChannel: (channelId: Id<"channels">) => void;
+  onNavigateToConversation?: (conversationId: Id<"conversations">) => void;
 }
 
 function formatTimestamp(ts: number): string {
@@ -28,7 +30,7 @@ function formatTimestamp(ts: number): string {
   return `${dateStr}, ${time}`;
 }
 
-export function BookmarkedMessages({ onClose, onNavigateToChannel }: BookmarkedMessagesProps) {
+export function BookmarkedMessages({ onClose, onNavigateToChannel, onNavigateToConversation }: BookmarkedMessagesProps) {
   const { user } = useUser();
   const bookmarks = useQuery(api.bookmarks.getBookmarks, user ? { userId: user._id } : "skip");
   const removeBookmark = useMutation(api.bookmarks.removeBookmark);
@@ -73,12 +75,13 @@ export function BookmarkedMessages({ onClose, onNavigateToChannel }: BookmarkedM
             {bookmarks.map(({ bookmark, message }) => (
               <div key={bookmark._id} className="p-4 hover:bg-hover">
                 <div className="flex gap-3">
-                  <div
-                    className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm"
-                    style={{ backgroundColor: message.user.avatarColor }}
-                  >
-                    {message.user.username[0].toUpperCase()}
-                  </div>
+                  <Avatar
+                    username={message.user.username}
+                    avatarColor={message.user.avatarColor}
+                    avatarUrl={message.user.avatarUrl}
+                    size="md"
+                    className="mt-0.5 shrink-0"
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-2">
                       <span className="text-sm font-bold text-text">{message.user.username}</span>
@@ -88,13 +91,23 @@ export function BookmarkedMessages({ onClose, onNavigateToChannel }: BookmarkedM
                       <MessageText text={message.text} />
                     </div>
                     <div className="mt-2 flex items-center gap-2 text-xs text-text-muted">
-                      <button
-                        type="button"
-                        className="text-accent hover:text-accent-hover hover:underline"
-                        onClick={() => onNavigateToChannel(message.channelId)}
-                      >
-                        in #{message.channelName}
-                      </button>
+                      {message.channelId && message.channelName ? (
+                        <button
+                          type="button"
+                          className="text-accent hover:text-accent-hover hover:underline"
+                          onClick={() => onNavigateToChannel(message.channelId!)}
+                        >
+                          in #{message.channelName}
+                        </button>
+                      ) : message.conversationId && message.conversationUser && onNavigateToConversation ? (
+                        <button
+                          type="button"
+                          className="text-success hover:text-success/80 hover:underline"
+                          onClick={() => onNavigateToConversation(message.conversationId!)}
+                        >
+                          DM with {message.conversationUser.username}
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         className="text-text-muted hover:text-danger"

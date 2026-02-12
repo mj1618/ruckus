@@ -6,12 +6,16 @@ import { Id } from "../../convex/_generated/dataModel";
 import { useUser } from "@/components/UserContext";
 
 interface TypingIndicatorProps {
-  channelId: Id<"channels">;
+  channelId?: Id<"channels">;
+  conversationId?: Id<"conversations">;
 }
 
-export function TypingIndicator({ channelId }: TypingIndicatorProps) {
+export function TypingIndicator({ channelId, conversationId }: TypingIndicatorProps) {
   const { user } = useUser();
-  const typingUsers = useQuery(api.typing.getTypingUsers, { channelId });
+  const typingUsers = useQuery(
+    api.typing.getTypingUsers,
+    channelId ? { channelId } : conversationId ? { conversationId } : "skip"
+  );
 
   const others = typingUsers?.filter((u) => u._id !== user?._id) ?? [];
 

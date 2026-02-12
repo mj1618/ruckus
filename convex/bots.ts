@@ -158,8 +158,8 @@ export const getMentions = internalQuery({
       .filter((m) => m._creationTime > args.since && m.userId !== args.botId)
       .slice(0, limit);
 
-    // Get channel info and sender info
-    const channelIds = [...new Set(filtered.map((m) => m.channelId))];
+    // Get channel info and sender info (only for channel messages, not DMs)
+    const channelIds = [...new Set(filtered.map((m) => m.channelId).filter((id): id is Id<"channels"> => id !== undefined))];
     const userIds = [...new Set(filtered.map((m) => m.userId))];
 
     const [channels, users] = await Promise.all([
@@ -177,7 +177,7 @@ export const getMentions = internalQuery({
     return filtered.map((m) => ({
       messageId: m._id,
       channelId: m.channelId,
-      channelName: channelMap.get(m.channelId)?.name ?? "unknown",
+      channelName: m.channelId ? (channelMap.get(m.channelId)?.name ?? "unknown") : undefined,
       text: m.text,
       senderId: m.userId,
       senderUsername: userMap.get(m.userId)?.username ?? "unknown",
@@ -332,15 +332,19 @@ export const getWebhooksForMentionedBots = internalQuery({
 });
 
 // List all channels (for bots to know where they can post)
+// Note: Only returns public channels - bots cannot access private channels
 export const listChannels = internalQuery({
   args: {},
   handler: async (ctx) => {
     const channels = await ctx.db.query("channels").collect();
-    return channels.map((c) => ({
-      channelId: c._id,
-      name: c.name,
-      topic: c.topic,
-    }));
+    // Filter out private channels - bots only have access to public channels
+    return channels
+      .filter((c) => !c.isPrivate)
+      .map((c) => ({
+        channelId: c._id,
+        name: c.name,
+        topic: c.topic,
+      }));
   },
 });
 
@@ -424,6 +428,7 @@ export const authenticateBot = query({
 });
 
 // Get all channels (authenticated with API key)
+// Note: Only returns public channels - bots cannot access private channels
 export const getChannelsAsBot = query({
   args: {
     apiKey: v.string(),
@@ -440,16 +445,20 @@ export const getChannelsAsBot = query({
     }
 
     const channels = await ctx.db.query("channels").collect();
-    return channels.map((c) => ({
-      channelId: c._id,
-      name: c.name,
-      topic: c.topic,
-    }));
+    // Filter out private channels - bots only have access to public channels
+    return channels
+      .filter((c) => !c.isPrivate)
+      .map((c) => ({
+        channelId: c._id,
+        name: c.name,
+        topic: c.topic,
+      }));
   },
 });
 
 // Get messages from a channel (authenticated with API key)
 // Bots can subscribe to this query for real-time updates
+// Note: Bots cannot access private channels
 export const getChannelMessagesAsBot = query({
   args: {
     apiKey: v.string(),
@@ -465,6 +474,15 @@ export const getChannelMessagesAsBot = query({
 
     if (!keyRecord) {
       throw new Error("Invalid API key");
+    }
+
+    // Check if channel is private
+    const channel = await ctx.db.get("channels", args.channelId);
+    if (!channel) {
+      throw new Error("Channel not found");
+    }
+    if (channel.isPrivate) {
+      throw new Error("Bots cannot access private channels");
     }
 
     const limit = Math.min(args.limit ?? 50, 200);
@@ -543,8 +561,8 @@ export const getMentionsAsBot = query({
       .filter((m) => m._creationTime > since && m.userId !== bot._id)
       .slice(0, limit);
 
-    // Get channel info and sender info
-    const channelIds = [...new Set(filtered.map((m) => m.channelId))];
+    // Get channel info and sender info (only for channel messages, not DMs)
+    const channelIds = [...new Set(filtered.map((m) => m.channelId).filter((id): id is Id<"channels"> => id !== undefined))];
     const userIds = [...new Set(filtered.map((m) => m.userId))];
 
     const [channels, users] = await Promise.all([
@@ -562,7 +580,7 @@ export const getMentionsAsBot = query({
     return filtered.map((m) => ({
       messageId: m._id,
       channelId: m.channelId,
-      channelName: channelMap.get(m.channelId)?.name ?? "unknown",
+      channelName: m.channelId ? (channelMap.get(m.channelId)?.name ?? "unknown") : undefined,
       text: m.text,
       senderId: m.userId,
       senderUsername: userMap.get(m.userId)?.username ?? "unknown",
@@ -573,6 +591,7 @@ export const getMentionsAsBot = query({
 });
 
 // Send a message as a bot (authenticated with API key)
+// Note: Bots cannot post to private channels
 export const sendMessageAsBot = mutation({
   args: {
     apiKey: v.string(),
@@ -595,6 +614,15 @@ export const sendMessageAsBot = mutation({
     const bot = await ctx.db.get("users", keyRecord.userId);
     if (!bot || !bot.isBot) {
       throw new Error("Invalid bot");
+    }
+
+    // Check if channel is private
+    const channel = await ctx.db.get("channels", args.channelId);
+    if (!channel) {
+      throw new Error("Channel not found");
+    }
+    if (channel.isPrivate) {
+      throw new Error("Bots cannot post to private channels");
     }
 
     // Update last used timestamp
@@ -629,10 +657,11 @@ export const sendMessageAsBot = mutation({
       }
     }
 
-    let channelId = args.channelId;
+    let channelId: Id<"channels"> | undefined = args.channelId;
     if (args.parentMessageId) {
       const parent = await ctx.db.get("messages", args.parentMessageId);
       if (!parent) throw new Error("Parent message not found");
+      if (!parent.channelId) throw new Error("Cannot reply to a DM message via bot API");
       channelId = parent.channelId;
       if (parent.parentMessageId) {
         throw new Error("Cannot reply to a thread reply — reply to the parent message instead");
@@ -642,6 +671,10 @@ export const sendMessageAsBot = mutation({
         replyCount: (parent.replyCount ?? 0) + 1,
         latestReplyTime: Date.now(),
       });
+    }
+
+    if (!channelId) {
+      throw new Error("Channel ID is required");
     }
 
     const messageId = await ctx.db.insert("messages", {
@@ -772,6 +805,34 @@ export const heartbeatAsBot = mutation({
   },
 });
 
+// Mark bot as offline immediately (sets lastSeen far in the past)
+export const goOfflineAsBot = mutation({
+  args: {
+    apiKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Validate API key
+    const keyRecord = await ctx.db
+      .query("botApiKeys")
+      .withIndex("by_apiKey", (q) => q.eq("apiKey", args.apiKey))
+      .unique();
+
+    if (!keyRecord) {
+      throw new Error("Invalid API key");
+    }
+
+    const bot = await ctx.db.get("users", keyRecord.userId);
+    if (!bot || !bot.isBot) {
+      throw new Error("Invalid bot");
+    }
+
+    // Set lastSeen to 0 so bot immediately appears offline
+    await ctx.db.patch("users", bot._id, {
+      lastSeen: 0,
+    });
+  },
+});
+
 // Update a message (for streaming responses)
 export const updateMessageAsBot = mutation({
   args: {
@@ -821,10 +882,572 @@ export const updateMessageAsBot = mutation({
 });
 
 // ============================================================
+// DIRECT MESSAGE (DM) BOT API
+// ============================================================
+
+// Helper to order participant IDs consistently (lower ID first)
+function orderParticipants(
+  userId1: Id<"users">,
+  userId2: Id<"users">
+): [Id<"users">, Id<"users">] {
+  return userId1 < userId2 ? [userId1, userId2] : [userId2, userId1];
+}
+
+// Get all conversations the bot is part of
+export const getConversationsAsBot = query({
+  args: {
+    apiKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Validate API key and get bot info
+    const keyRecord = await ctx.db
+      .query("botApiKeys")
+      .withIndex("by_apiKey", (q) => q.eq("apiKey", args.apiKey))
+      .unique();
+
+    if (!keyRecord) {
+      throw new Error("Invalid API key");
+    }
+
+    const bot = await ctx.db.get("users", keyRecord.userId);
+    if (!bot || !bot.isBot) {
+      throw new Error("Invalid bot");
+    }
+
+    // Find all conversations where the bot is a participant
+    const [asParticipant1, asParticipant2] = await Promise.all([
+      ctx.db
+        .query("conversations")
+        .withIndex("by_participant1", (q) => q.eq("participant1", bot._id))
+        .collect(),
+      ctx.db
+        .query("conversations")
+        .withIndex("by_participant2", (q) => q.eq("participant2", bot._id))
+        .collect(),
+    ]);
+
+    const allConversations = [...asParticipant1, ...asParticipant2];
+
+    // Sort by lastMessageTime (most recent first)
+    allConversations.sort((a, b) => {
+      const aTime = a.lastMessageTime ?? a._creationTime;
+      const bTime = b.lastMessageTime ?? b._creationTime;
+      return bTime - aTime;
+    });
+
+    // Get the other participant's info for each conversation
+    const conversationsWithUsers = await Promise.all(
+      allConversations.map(async (conv) => {
+        const otherUserId =
+          conv.participant1 === bot._id ? conv.participant2 : conv.participant1;
+        const otherUser = await ctx.db.get("users", otherUserId);
+
+        return {
+          conversationId: conv._id,
+          createdAt: conv._creationTime,
+          lastMessageTime: conv.lastMessageTime,
+          otherUser: otherUser
+            ? {
+              userId: otherUser._id,
+              username: otherUser.username,
+              avatarColor: otherUser.avatarColor,
+              isBot: otherUser.isBot,
+            }
+            : null,
+        };
+      })
+    );
+
+    // Filter out conversations where the other user no longer exists
+    return conversationsWithUsers.filter((c) => c.otherUser !== null);
+  },
+});
+
+// Get messages from a conversation (for DMs)
+export const getConversationMessagesAsBot = query({
+  args: {
+    apiKey: v.string(),
+    conversationId: v.id("conversations"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // Validate API key and get bot info
+    const keyRecord = await ctx.db
+      .query("botApiKeys")
+      .withIndex("by_apiKey", (q) => q.eq("apiKey", args.apiKey))
+      .unique();
+
+    if (!keyRecord) {
+      throw new Error("Invalid API key");
+    }
+
+    const bot = await ctx.db.get("users", keyRecord.userId);
+    if (!bot || !bot.isBot) {
+      throw new Error("Invalid bot");
+    }
+
+    // Verify the bot is a participant in this conversation
+    const conversation = await ctx.db.get("conversations", args.conversationId);
+    if (!conversation) {
+      throw new Error("Conversation not found");
+    }
+
+    if (conversation.participant1 !== bot._id && conversation.participant2 !== bot._id) {
+      throw new Error("Bot is not a participant in this conversation");
+    }
+
+    const limit = Math.min(args.limit ?? 50, 200);
+
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_conversationId", (q) => q.eq("conversationId", args.conversationId))
+      .order("desc")
+      .take(limit);
+
+    // Reverse to get ascending order
+    messages.reverse();
+
+    // Fetch user info for each message
+    const userIds = [...new Set(messages.map((m) => m.userId))];
+    const users = await Promise.all(
+      userIds.map((id) => ctx.db.get("users", id))
+    );
+    const userMap = new Map(
+      users
+        .filter((u) => u !== null)
+        .map((u) => [u._id, { username: u.username, isBot: u.isBot }])
+    );
+
+    return messages.map((m) => ({
+      messageId: m._id,
+      conversationId: m.conversationId,
+      text: m.text,
+      senderId: m.userId,
+      senderUsername: userMap.get(m.userId)?.username ?? "unknown",
+      senderIsBot: userMap.get(m.userId)?.isBot ?? false,
+      parentMessageId: m.parentMessageId,
+      createdAt: m._creationTime,
+      editedAt: m.editedAt,
+    }));
+  },
+});
+
+// Poll for new direct messages to the bot (across all conversations)
+export const getDirectMessagesAsBot = query({
+  args: {
+    apiKey: v.string(),
+    since: v.optional(v.number()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // Validate API key and get bot info
+    const keyRecord = await ctx.db
+      .query("botApiKeys")
+      .withIndex("by_apiKey", (q) => q.eq("apiKey", args.apiKey))
+      .unique();
+
+    if (!keyRecord) {
+      throw new Error("Invalid API key");
+    }
+
+    const bot = await ctx.db.get("users", keyRecord.userId);
+    if (!bot || !bot.isBot) {
+      throw new Error("Invalid bot");
+    }
+
+    const since = args.since ?? 0;
+    const limit = Math.min(args.limit ?? 50, 100);
+
+    // Find all conversations where the bot is a participant
+    const [asParticipant1, asParticipant2] = await Promise.all([
+      ctx.db
+        .query("conversations")
+        .withIndex("by_participant1", (q) => q.eq("participant1", bot._id))
+        .collect(),
+      ctx.db
+        .query("conversations")
+        .withIndex("by_participant2", (q) => q.eq("participant2", bot._id))
+        .collect(),
+    ]);
+
+    const conversationIds = [...asParticipant1, ...asParticipant2].map((c) => c._id);
+
+    if (conversationIds.length === 0) {
+      return [];
+    }
+
+    // Get recent messages from all conversations
+    const allMessages = await Promise.all(
+      conversationIds.map((convId) =>
+        ctx.db
+          .query("messages")
+          .withIndex("by_conversationId", (q) => q.eq("conversationId", convId))
+          .order("desc")
+          .take(limit)
+      )
+    );
+
+    // Flatten, filter by timestamp and exclude bot's own messages, then sort
+    const filtered = allMessages
+      .flat()
+      .filter((m) => m._creationTime > since && m.userId !== bot._id)
+      .sort((a, b) => a._creationTime - b._creationTime)
+      .slice(0, limit);
+
+    // Get conversation info and sender info
+    const conversationIdsForMessages = [...new Set(filtered.map((m) => m.conversationId).filter((id): id is Id<"conversations"> => id !== undefined))];
+    const userIds = [...new Set(filtered.map((m) => m.userId))];
+
+    const [conversations, users] = await Promise.all([
+      Promise.all(conversationIdsForMessages.map((id) => ctx.db.get("conversations", id))),
+      Promise.all(userIds.map((id) => ctx.db.get("users", id))),
+    ]);
+
+    const conversationMap = new Map(
+      conversations.filter((c) => c !== null).map((c) => [c._id, c])
+    );
+    const userMap = new Map(
+      users.filter((u) => u !== null).map((u) => [u._id, u])
+    );
+
+    return filtered.map((m) => {
+      const conversation = m.conversationId ? conversationMap.get(m.conversationId) : null;
+      const otherUserId = conversation
+        ? (conversation.participant1 === bot._id ? conversation.participant2 : conversation.participant1)
+        : undefined;
+
+      return {
+        messageId: m._id,
+        conversationId: m.conversationId,
+        text: m.text,
+        senderId: m.userId,
+        senderUsername: userMap.get(m.userId)?.username ?? "unknown",
+        parentMessageId: m.parentMessageId,
+        createdAt: m._creationTime,
+      };
+    });
+  },
+});
+
+// Send a direct message as a bot (creates conversation if needed)
+export const sendDirectMessageAsBot = mutation({
+  args: {
+    apiKey: v.string(),
+    userId: v.id("users"), // The user to send the DM to
+    text: v.string(),
+    parentMessageId: v.optional(v.id("messages")),
+    replyToMessageId: v.optional(v.id("messages")),
+  },
+  handler: async (ctx, args) => {
+    // Validate API key
+    const keyRecord = await ctx.db
+      .query("botApiKeys")
+      .withIndex("by_apiKey", (q) => q.eq("apiKey", args.apiKey))
+      .unique();
+
+    if (!keyRecord) {
+      throw new Error("Invalid API key");
+    }
+
+    const bot = await ctx.db.get("users", keyRecord.userId);
+    if (!bot || !bot.isBot) {
+      throw new Error("Invalid bot");
+    }
+
+    // Verify target user exists
+    const targetUser = await ctx.db.get("users", args.userId);
+    if (!targetUser) {
+      throw new Error("User not found");
+    }
+
+    if (bot._id === args.userId) {
+      throw new Error("Cannot send a DM to yourself");
+    }
+
+    // Update last used timestamp
+    await ctx.db.patch("botApiKeys", keyRecord._id, {
+      lastUsedAt: Date.now(),
+    });
+
+    const text = args.text.trim();
+    if (text.length === 0) {
+      throw new Error("Message cannot be empty");
+    }
+    if (text.length > 4000) {
+      throw new Error("Message cannot exceed 4000 characters");
+    }
+
+    // Get or create conversation
+    const [participant1, participant2] = orderParticipants(bot._id, args.userId);
+
+    let conversation = await ctx.db
+      .query("conversations")
+      .withIndex("by_participants", (q) =>
+        q.eq("participant1", participant1).eq("participant2", participant2)
+      )
+      .unique();
+
+    let conversationId: Id<"conversations">;
+    if (conversation) {
+      conversationId = conversation._id;
+    } else {
+      conversationId = await ctx.db.insert("conversations", {
+        participant1,
+        participant2,
+        lastMessageTime: Date.now(),
+      });
+    }
+
+    // Handle parent message (thread reply)
+    let finalConversationId = conversationId;
+    if (args.parentMessageId) {
+      const parent = await ctx.db.get("messages", args.parentMessageId);
+      if (!parent) throw new Error("Parent message not found");
+      if (!parent.conversationId) throw new Error("Parent message is not a DM");
+      if (parent.conversationId !== conversationId) {
+        throw new Error("Parent message is from a different conversation");
+      }
+      if (parent.parentMessageId) {
+        throw new Error("Cannot reply to a thread reply — reply to the parent message instead");
+      }
+
+      await ctx.db.patch("messages", args.parentMessageId, {
+        replyCount: (parent.replyCount ?? 0) + 1,
+        latestReplyTime: Date.now(),
+      });
+    }
+
+    // Validate inline reply target if provided
+    if (args.replyToMessageId) {
+      const replyTarget = await ctx.db.get("messages", args.replyToMessageId);
+      if (!replyTarget) throw new Error("Reply target message not found");
+      if (replyTarget.conversationId !== conversationId) {
+        throw new Error("Cannot reply to a message in a different conversation");
+      }
+    }
+
+    const messageId = await ctx.db.insert("messages", {
+      conversationId: finalConversationId,
+      userId: bot._id,
+      text,
+      ...(args.parentMessageId ? { parentMessageId: args.parentMessageId } : {}),
+      ...(args.replyToMessageId ? { replyToMessageId: args.replyToMessageId } : {}),
+    });
+
+    // Update conversation lastMessageTime
+    await ctx.db.patch("conversations", conversationId, {
+      lastMessageTime: Date.now(),
+    });
+
+    // Clear typing indicator
+    const typingIndicator = await ctx.db
+      .query("typingIndicators")
+      .withIndex("by_conversationId", (q) => q.eq("conversationId", conversationId))
+      .filter((q) => q.eq(q.field("userId"), bot._id))
+      .unique();
+
+    if (typingIndicator) {
+      await ctx.db.delete("typingIndicators", typingIndicator._id);
+    }
+
+    return { messageId, conversationId };
+  },
+});
+
+// Send a message to a conversation by ID (for replying to existing DMs)
+export const sendMessageToConversationAsBot = mutation({
+  args: {
+    apiKey: v.string(),
+    conversationId: v.id("conversations"),
+    text: v.string(),
+    parentMessageId: v.optional(v.id("messages")),
+    replyToMessageId: v.optional(v.id("messages")),
+  },
+  handler: async (ctx, args) => {
+    // Validate API key
+    const keyRecord = await ctx.db
+      .query("botApiKeys")
+      .withIndex("by_apiKey", (q) => q.eq("apiKey", args.apiKey))
+      .unique();
+
+    if (!keyRecord) {
+      throw new Error("Invalid API key");
+    }
+
+    const bot = await ctx.db.get("users", keyRecord.userId);
+    if (!bot || !bot.isBot) {
+      throw new Error("Invalid bot");
+    }
+
+    // Verify conversation exists and bot is a participant
+    const conversation = await ctx.db.get("conversations", args.conversationId);
+    if (!conversation) {
+      throw new Error("Conversation not found");
+    }
+
+    if (conversation.participant1 !== bot._id && conversation.participant2 !== bot._id) {
+      throw new Error("Bot is not a participant in this conversation");
+    }
+
+    // Update last used timestamp
+    await ctx.db.patch("botApiKeys", keyRecord._id, {
+      lastUsedAt: Date.now(),
+    });
+
+    const text = args.text.trim();
+    if (text.length === 0) {
+      throw new Error("Message cannot be empty");
+    }
+    if (text.length > 4000) {
+      throw new Error("Message cannot exceed 4000 characters");
+    }
+
+    // Handle parent message (thread reply)
+    if (args.parentMessageId) {
+      const parent = await ctx.db.get("messages", args.parentMessageId);
+      if (!parent) throw new Error("Parent message not found");
+      if (parent.conversationId !== args.conversationId) {
+        throw new Error("Parent message is from a different conversation");
+      }
+      if (parent.parentMessageId) {
+        throw new Error("Cannot reply to a thread reply — reply to the parent message instead");
+      }
+
+      await ctx.db.patch("messages", args.parentMessageId, {
+        replyCount: (parent.replyCount ?? 0) + 1,
+        latestReplyTime: Date.now(),
+      });
+    }
+
+    // Validate inline reply target if provided
+    if (args.replyToMessageId) {
+      const replyTarget = await ctx.db.get("messages", args.replyToMessageId);
+      if (!replyTarget) throw new Error("Reply target message not found");
+      if (replyTarget.conversationId !== args.conversationId) {
+        throw new Error("Cannot reply to a message in a different conversation");
+      }
+    }
+
+    const messageId = await ctx.db.insert("messages", {
+      conversationId: args.conversationId,
+      userId: bot._id,
+      text,
+      ...(args.parentMessageId ? { parentMessageId: args.parentMessageId } : {}),
+      ...(args.replyToMessageId ? { replyToMessageId: args.replyToMessageId } : {}),
+    });
+
+    // Update conversation lastMessageTime
+    await ctx.db.patch("conversations", args.conversationId, {
+      lastMessageTime: Date.now(),
+    });
+
+    // Clear typing indicator
+    const typingIndicator = await ctx.db
+      .query("typingIndicators")
+      .withIndex("by_conversationId", (q) => q.eq("conversationId", args.conversationId))
+      .filter((q) => q.eq(q.field("userId"), bot._id))
+      .unique();
+
+    if (typingIndicator) {
+      await ctx.db.delete("typingIndicators", typingIndicator._id);
+    }
+
+    return { messageId };
+  },
+});
+
+// Set typing indicator in a conversation as a bot
+export const setTypingInConversationAsBot = mutation({
+  args: {
+    apiKey: v.string(),
+    conversationId: v.id("conversations"),
+  },
+  handler: async (ctx, args) => {
+    // Validate API key
+    const keyRecord = await ctx.db
+      .query("botApiKeys")
+      .withIndex("by_apiKey", (q) => q.eq("apiKey", args.apiKey))
+      .unique();
+
+    if (!keyRecord) {
+      throw new Error("Invalid API key");
+    }
+
+    const bot = await ctx.db.get("users", keyRecord.userId);
+    if (!bot || !bot.isBot) {
+      throw new Error("Invalid bot");
+    }
+
+    // Verify bot is a participant in this conversation
+    const conversation = await ctx.db.get("conversations", args.conversationId);
+    if (!conversation) {
+      throw new Error("Conversation not found");
+    }
+
+    if (conversation.participant1 !== bot._id && conversation.participant2 !== bot._id) {
+      throw new Error("Bot is not a participant in this conversation");
+    }
+
+    const existing = await ctx.db
+      .query("typingIndicators")
+      .withIndex("by_conversationId", (q) => q.eq("conversationId", args.conversationId))
+      .filter((q) => q.eq(q.field("userId"), bot._id))
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch("typingIndicators", existing._id, {
+        expiresAt: Date.now() + 3000,
+      });
+    } else {
+      await ctx.db.insert("typingIndicators", {
+        conversationId: args.conversationId,
+        userId: bot._id,
+        expiresAt: Date.now() + 3000,
+      });
+    }
+  },
+});
+
+// Clear typing indicator in a conversation as a bot
+export const clearTypingInConversationAsBot = mutation({
+  args: {
+    apiKey: v.string(),
+    conversationId: v.id("conversations"),
+  },
+  handler: async (ctx, args) => {
+    // Validate API key
+    const keyRecord = await ctx.db
+      .query("botApiKeys")
+      .withIndex("by_apiKey", (q) => q.eq("apiKey", args.apiKey))
+      .unique();
+
+    if (!keyRecord) {
+      throw new Error("Invalid API key");
+    }
+
+    const bot = await ctx.db.get("users", keyRecord.userId);
+    if (!bot || !bot.isBot) {
+      throw new Error("Invalid bot");
+    }
+
+    const existing = await ctx.db
+      .query("typingIndicators")
+      .withIndex("by_conversationId", (q) => q.eq("conversationId", args.conversationId))
+      .filter((q) => q.eq(q.field("userId"), bot._id))
+      .unique();
+
+    if (existing) {
+      await ctx.db.delete("typingIndicators", existing._id);
+    }
+  },
+});
+
+// ============================================================
 // INTERNAL FUNCTIONS (for HTTP endpoint handlers)
 // ============================================================
 
 // Internal mutation to send message (for HTTP endpoint)
+// Note: Bots cannot post to private channels
 export const internalSendMessage = internalMutation({
   args: {
     channelId: v.id("channels"),
@@ -839,6 +1462,15 @@ export const internalSendMessage = internalMutation({
     }))),
   },
   handler: async (ctx, args) => {
+    // Check if channel is private
+    const channel = await ctx.db.get("channels", args.channelId);
+    if (!channel) {
+      throw new Error("Channel not found");
+    }
+    if (channel.isPrivate) {
+      throw new Error("Bots cannot post to private channels");
+    }
+
     const text = args.text.trim();
     if (text.length === 0 && (!args.attachments || args.attachments.length === 0)) {
       throw new Error("Message cannot be empty");
@@ -869,10 +1501,11 @@ export const internalSendMessage = internalMutation({
       }
     }
 
-    let channelId = args.channelId;
+    let channelId: Id<"channels"> = args.channelId;
     if (args.parentMessageId) {
       const parent = await ctx.db.get("messages", args.parentMessageId);
       if (!parent) throw new Error("Parent message not found");
+      if (!parent.channelId) throw new Error("Cannot reply to a DM message via bot API");
       channelId = parent.channelId;
       if (parent.parentMessageId) {
         throw new Error(

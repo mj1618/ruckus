@@ -1,6 +1,26 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
+// --- Password hashing helpers (Web Crypto API) ---
+
+function generateSalt(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function hashPassword(password: string, salt: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(salt + password);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// --- Avatar colors ---
+
 const AVATAR_COLORS = [
   "#ef4444", "#f97316", "#f59e0b", "#eab308",
   "#84cc16", "#22c55e", "#14b8a6", "#06b6d4",
@@ -61,6 +81,85 @@ export const joinOrReturn = mutation({
   },
 });
 
+export const signup = mutation({
+  args: {
+    sessionId: v.string(),
+    username: v.string(),
+    password: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const username = args.username.trim();
+    if (!username || username.length > 30) {
+      throw new Error("Invalid username");
+    }
+    if (args.password.length < 4) {
+      throw new Error("Password must be at least 4 characters");
+    }
+
+    // Check if username is already taken
+    const existingUsername = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", username))
+      .unique();
+    if (existingUsername) {
+      throw new Error("Username already taken");
+    }
+
+    const salt = generateSalt();
+    const hash = await hashPassword(args.password, salt);
+
+    const userId = await ctx.db.insert("users", {
+      username,
+      sessionId: args.sessionId,
+      avatarColor: getAvatarColor(username),
+      lastSeen: Date.now(),
+      passwordHash: hash,
+      passwordSalt: salt,
+    });
+    return userId;
+  },
+});
+
+export const login = mutation({
+  args: {
+    sessionId: v.string(),
+    username: v.string(),
+    password: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const username = args.username.trim();
+    if (!username) {
+      throw new Error("Username is required");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", username))
+      .unique();
+
+    if (!user) {
+      throw new Error("Invalid username or password");
+    }
+
+    if (!user.passwordHash || !user.passwordSalt) {
+      throw new Error("This account does not have a password. Please contact support.");
+    }
+
+    const hash = await hashPassword(args.password, user.passwordSalt);
+    if (hash !== user.passwordHash) {
+      throw new Error("Invalid username or password");
+    }
+
+    // Transfer session to this user
+    await ctx.db.patch("users", user._id, {
+      sessionId: args.sessionId,
+      lastSeen: Date.now(),
+    });
+
+    return user._id;
+  },
+});
+
 export const heartbeat = mutation({
   args: {
     sessionId: v.string(),
@@ -84,16 +183,69 @@ export const getOnlineUsers = query({
   handler: async (ctx) => {
     const cutoff = Date.now() - 60_000;
     const allUsers = await ctx.db.query("users").collect();
-    return allUsers
-      .filter((u) => u.lastSeen > cutoff)
-      .map((u) => ({
+    const onlineUsers = allUsers.filter((u) => u.lastSeen > cutoff);
+
+    return Promise.all(
+      onlineUsers.map(async (u) => ({
         _id: u._id,
         username: u.username,
         avatarColor: u.avatarColor,
+        avatarUrl: u.avatarStorageId
+          ? await ctx.storage.getUrl(u.avatarStorageId)
+          : null,
         lastSeen: u.lastSeen,
         statusEmoji: u.statusEmoji,
         statusText: u.statusText,
-      }));
+        isBot: u.isBot,
+      }))
+    );
+  },
+});
+
+export const getChannelUsers = query({
+  args: {
+    channelId: v.optional(v.id("channels")),
+  },
+  handler: async (ctx, args) => {
+    const cutoff = Date.now() - 60_000;
+
+    let users;
+    if (args.channelId) {
+      const channel = await ctx.db.get("channels", args.channelId);
+      if (channel?.isPrivate) {
+        // Private channel: show only channel members
+        const memberships = await ctx.db
+          .query("channelMembers")
+          .withIndex("by_channelId", (q) => q.eq("channelId", args.channelId!))
+          .collect();
+        const memberUsers = await Promise.all(
+          memberships.map((m) => ctx.db.get("users", m.userId))
+        );
+        users = memberUsers.filter((u): u is NonNullable<typeof u> => u !== null);
+      } else {
+        // Public channel: show all users on the platform
+        users = await ctx.db.query("users").collect();
+      }
+    } else {
+      // No channel context: show all users
+      users = await ctx.db.query("users").collect();
+    }
+
+    return Promise.all(
+      users.map(async (u) => ({
+        _id: u._id,
+        username: u.username,
+        avatarColor: u.avatarColor,
+        avatarUrl: u.avatarStorageId
+          ? await ctx.storage.getUrl(u.avatarStorageId)
+          : null,
+        lastSeen: u.lastSeen,
+        isOnline: u.lastSeen > cutoff,
+        statusEmoji: u.statusEmoji,
+        statusText: u.statusText,
+        isBot: u.isBot,
+      }))
+    );
   },
 });
 
@@ -151,6 +303,80 @@ export const getCurrentUser = query({
       .query("users")
       .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
       .unique();
-    return user ?? null;
+    if (!user) return null;
+
+    const avatarUrl = user.avatarStorageId
+      ? await ctx.storage.getUrl(user.avatarStorageId)
+      : null;
+
+    return { ...user, avatarUrl };
+  },
+});
+
+export const getUserByUsername = query({
+  args: {
+    username: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", args.username))
+      .unique();
+    if (!user) return null;
+
+    const avatarUrl = user.avatarStorageId
+      ? await ctx.storage.getUrl(user.avatarStorageId)
+      : null;
+
+    return {
+      _id: user._id,
+      username: user.username,
+      avatarColor: user.avatarColor,
+      avatarUrl,
+    };
+  },
+});
+
+export const generateAvatarUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const updateAvatar = mutation({
+  args: {
+    userId: v.id("users"),
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get("users", args.userId);
+    if (!user) throw new Error("User not found");
+
+    // Delete old avatar if exists
+    if (user.avatarStorageId) {
+      await ctx.storage.delete(user.avatarStorageId);
+    }
+
+    await ctx.db.patch("users", args.userId, {
+      avatarStorageId: args.storageId,
+    });
+  },
+});
+
+export const removeAvatar = mutation({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get("users", args.userId);
+    if (!user) throw new Error("User not found");
+
+    if (user.avatarStorageId) {
+      await ctx.storage.delete(user.avatarStorageId);
+      await ctx.db.patch("users", args.userId, {
+        avatarStorageId: undefined,
+      });
+    }
   },
 });
