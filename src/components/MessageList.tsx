@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
@@ -14,8 +14,14 @@ interface MessageListProps {
 
 export function MessageList({ channelId, onReplyInThread }: MessageListProps) {
   const messages = useQuery(api.messages.getMessages, { channelId });
+  const pinnedMessageIds = useQuery(api.pins.getPinnedMessageIds, { channelId });
   const { user } = useUser();
   const markRead = useMutation(api.channelReads.markChannelRead);
+
+  const pinnedSet = useMemo(
+    () => new Set(pinnedMessageIds ?? []),
+    [pinnedMessageIds]
+  );
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const prevLengthRef = useRef(0);
@@ -81,6 +87,7 @@ export function MessageList({ channelId, onReplyInThread }: MessageListProps) {
             isGrouped={isGrouped}
             currentUserId={user?._id}
             onReplyInThread={onReplyInThread}
+            isPinned={pinnedSet.has(message._id)}
           />
         );
       })}

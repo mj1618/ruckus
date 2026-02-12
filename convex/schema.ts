@@ -53,6 +53,15 @@ const schema = defineSchema({
   })
     .index("by_messageId", ["messageId"])
     .index("by_messageId_emoji", ["messageId", "emoji"]),
+
+  pinnedMessages: defineTable({
+    messageId: v.id("messages"),
+    channelId: v.id("channels"),
+    pinnedBy: v.id("users"),
+    pinnedAt: v.number(),
+  })
+    .index("by_channelId", ["channelId"])
+    .index("by_messageId", ["messageId"]),
 });
 
 export default schema;

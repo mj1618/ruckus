@@ -12,11 +12,13 @@ import { MessageInput } from "@/components/MessageInput";
 import { TypingIndicator } from "@/components/TypingIndicator";
 import { OnlineUsers } from "@/components/OnlineUsers";
 import { ThreadPanel } from "@/components/ThreadPanel";
+import { PinnedMessages } from "@/components/PinnedMessages";
 
 export function ChatLayout() {
   const [activeChannelId, setActiveChannelId] = useState<Id<"channels"> | null>(null);
   const [activeThreadId, setActiveThreadId] = useState<Id<"messages"> | null>(null);
-  const [mobileView, setMobileView] = useState<"sidebar" | "chat" | "users" | "thread">("chat");
+  const [showPinnedMessages, setShowPinnedMessages] = useState(false);
+  const [mobileView, setMobileView] = useState<"sidebar" | "chat" | "users" | "thread" | "pins">("chat");
 
   const { user } = useUser();
   const channels = useQuery(api.channels.listChannels);
@@ -30,9 +32,10 @@ export function ChatLayout() {
     }
   }, [channels, activeChannelId]);
 
-  // Close thread when switching channels
+  // Close thread and pins panel when switching channels
   useEffect(() => {
     setActiveThreadId(null);
+    setShowPinnedMessages(false);
   }, [activeChannelId]);
 
   // Mark channel as read when switching channels
@@ -81,6 +84,15 @@ export function ChatLayout() {
               channel={activeChannel}
               onToggleSidebar={() => setMobileView(mobileView === "sidebar" ? "chat" : "sidebar")}
               onToggleUsers={() => setMobileView(mobileView === "users" ? "chat" : "users")}
+              onTogglePins={() => {
+                setShowPinnedMessages((v) => !v);
+                if (!showPinnedMessages) {
+                  setMobileView("pins");
+                } else if (mobileView === "pins") {
+                  setMobileView("chat");
+                }
+              }}
+              showPins={showPinnedMessages}
             />
             <MessageList channelId={activeChannel._id} onReplyInThread={(messageId) => {
               setActiveThreadId(messageId);
@@ -98,19 +110,21 @@ export function ChatLayout() {
         )}
       </div>
 
-      {/* Right panel - Thread or Online Users */}
+      {/* Right panel - Thread, Pinned Messages, or Online Users */}
       <div
         className={`${
-          mobileView === "users" || mobileView === "thread" ? "fixed inset-0 z-40 flex justify-end" : "hidden"
+          mobileView === "users" || mobileView === "thread" || mobileView === "pins"
+            ? "fixed inset-0 z-40 flex justify-end"
+            : "hidden"
         } md:relative md:block md:z-auto`}
       >
-        {(mobileView === "users" || mobileView === "thread") && (
+        {(mobileView === "users" || mobileView === "thread" || mobileView === "pins") && (
           <div
             className="fixed inset-0 bg-black/50 md:hidden"
             onClick={() => setMobileView("chat")}
           />
         )}
-        <div className={`relative z-50 h-full ${activeThreadId ? "w-80" : "w-56"}`}>
+        <div className={`relative z-50 h-full ${activeThreadId || showPinnedMessages ? "w-80" : "w-56"}`}>
           {activeThreadId && activeChannel ? (
             <ThreadPanel
               parentMessageId={activeThreadId}
@@ -119,6 +133,14 @@ export function ChatLayout() {
               onClose={() => {
                 setActiveThreadId(null);
                 if (mobileView === "thread") setMobileView("chat");
+              }}
+            />
+          ) : showPinnedMessages && activeChannel ? (
+            <PinnedMessages
+              channelId={activeChannel._id}
+              onClose={() => {
+                setShowPinnedMessages(false);
+                if (mobileView === "pins") setMobileView("chat");
               }}
             />
           ) : (

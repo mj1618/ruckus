@@ -31,6 +31,7 @@ interface MessageItemProps {
   isGrouped: boolean;
   currentUserId: Id<"users"> | undefined;
   onReplyInThread?: (messageId: Id<"messages">) => void;
+  isPinned?: boolean;
 }
 
 function formatTimestamp(ts: number): string {
@@ -111,13 +112,15 @@ function ReactionBar({
   );
 }
 
-export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread }: MessageItemProps) {
+export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread, isPinned }: MessageItemProps) {
   const [showPicker, setShowPicker] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
   const toggleReaction = useMutation(api.reactions.toggleReaction);
   const editMessage = useMutation(api.messages.editMessage);
   const deleteMessage = useMutation(api.messages.deleteMessage);
+  const pinMessage = useMutation(api.pins.pinMessage);
+  const unpinMessage = useMutation(api.pins.unpinMessage);
 
   const isOwnMessage = currentUserId === message.user._id;
 
@@ -142,6 +145,15 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
     if (!currentUserId) return;
     if (window.confirm("Delete this message? This cannot be undone.")) {
       deleteMessage({ messageId: message._id, userId: currentUserId });
+    }
+  }
+
+  function handleTogglePin() {
+    if (!currentUserId) return;
+    if (isPinned) {
+      unpinMessage({ messageId: message._id, userId: currentUserId });
+    } else {
+      pinMessage({ messageId: message._id, userId: currentUserId });
     }
   }
 
@@ -183,6 +195,19 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
             title="Reply in thread"
           >
             💬
+          </button>
+        )}
+        {/* Pin/Unpin button - only for top-level messages */}
+        {!message.parentMessageId && (
+          <button
+            type="button"
+            className={`px-1.5 py-0.5 text-sm hover:bg-zinc-700 ${
+              isPinned ? "text-amber-400 hover:text-amber-300" : "text-zinc-400 hover:text-zinc-200"
+            }`}
+            onClick={handleTogglePin}
+            title={isPinned ? "Unpin message" : "Pin message"}
+          >
+            📌
           </button>
         )}
         {/* Edit button - only for own messages */}
@@ -257,10 +282,15 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
     </button>
   );
 
+  const pinIndicator = isPinned && (
+    <div className="text-xs text-amber-500/70">📌 Pinned</div>
+  );
+
   if (isGrouped) {
     return (
       <div className="group relative -mt-1 rounded py-0.5 pl-[52px] pr-2 hover:bg-zinc-800/30">
         {!isEditing && hoverToolbar}
+        {pinIndicator}
         {messageContent}
         {threadIndicator}
         <ReactionBar
@@ -286,6 +316,7 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
           <span className="text-sm font-bold text-zinc-100">{message.user.username}</span>
           <span className="text-xs text-zinc-500">{formatTimestamp(message._creationTime)}</span>
         </div>
+        {pinIndicator}
         {messageContent}
         {threadIndicator}
         <ReactionBar

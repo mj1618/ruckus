@@ -13,9 +13,11 @@ interface ChannelHeaderProps {
   };
   onToggleSidebar: () => void;
   onToggleUsers: () => void;
+  onTogglePins: () => void;
+  showPins?: boolean;
 }
 
-export function ChannelHeader({ channel, onToggleSidebar, onToggleUsers }: ChannelHeaderProps) {
+export function ChannelHeader({ channel, onToggleSidebar, onToggleUsers, onTogglePins, showPins }: ChannelHeaderProps) {
   const [isEditingTopic, setIsEditingTopic] = useState(false);
   const [topicInput, setTopicInput] = useState(channel.topic ?? "");
   const updateTopic = useMutation(api.channels.updateTopic);
@@ -65,6 +67,15 @@ export function ChannelHeader({ channel, onToggleSidebar, onToggleUsers }: Chann
           </button>
         )}
       </div>
+
+      {/* Pinned messages button */}
+      <button
+        onClick={onTogglePins}
+        className={`ml-3 text-sm ${showPins ? "text-amber-400" : "text-zinc-400 hover:text-zinc-200"}`}
+        title="Pinned messages"
+      >
+        📌
+      </button>
 
       {/* Mobile users button */}
       <button
