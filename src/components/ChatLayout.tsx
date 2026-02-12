@@ -15,6 +15,7 @@ import { ThreadPanel } from "@/components/ThreadPanel";
 import { PinnedMessages } from "@/components/PinnedMessages";
 import { SearchPanel } from "@/components/SearchPanel";
 import { SearchPalette } from "@/components/SearchPalette";
+import { BookmarkedMessages } from "@/components/BookmarkedMessages";
 import { NotificationPermission } from "@/components/NotificationPermission";
 import { useNotifications } from "@/hooks/useNotifications";
 
@@ -23,8 +24,9 @@ export function ChatLayout() {
   const [activeThreadId, setActiveThreadId] = useState<Id<"messages"> | null>(null);
   const [showPinnedMessages, setShowPinnedMessages] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showBookmarks, setShowBookmarks] = useState(false);
   const [showSearchPalette, setShowSearchPalette] = useState(false);
-  const [mobileView, setMobileView] = useState<"sidebar" | "chat" | "users" | "thread" | "pins" | "search">("chat");
+  const [mobileView, setMobileView] = useState<"sidebar" | "chat" | "users" | "thread" | "pins" | "search" | "bookmarks">("chat");
 
   const { user } = useUser();
   const channels = useQuery(api.channels.listChannels);
@@ -55,6 +57,7 @@ export function ChatLayout() {
     setActiveThreadId(null);
     setShowPinnedMessages(false);
     setShowSearch(false);
+    setShowBookmarks(false);
   }, [activeChannelId]);
 
   // Mark channel as read when switching channels
@@ -127,6 +130,15 @@ export function ChatLayout() {
                 }
               }}
               showSearch={showSearch}
+              onToggleBookmarks={() => {
+                setShowBookmarks((v) => !v);
+                if (!showBookmarks) {
+                  setMobileView("bookmarks");
+                } else if (mobileView === "bookmarks") {
+                  setMobileView("chat");
+                }
+              }}
+              showBookmarks={showBookmarks}
             />
             <NotificationPermission
               permissionState={permissionState}
@@ -153,18 +165,18 @@ export function ChatLayout() {
       {/* Right panel - Thread, Pinned Messages, Search, or Online Users */}
       <div
         className={`${
-          mobileView === "users" || mobileView === "thread" || mobileView === "pins" || mobileView === "search"
+          mobileView === "users" || mobileView === "thread" || mobileView === "pins" || mobileView === "search" || mobileView === "bookmarks"
             ? "fixed inset-0 z-40 flex justify-end"
             : "hidden"
         } md:relative md:block md:z-auto`}
       >
-        {(mobileView === "users" || mobileView === "thread" || mobileView === "pins" || mobileView === "search") && (
+        {(mobileView === "users" || mobileView === "thread" || mobileView === "pins" || mobileView === "search" || mobileView === "bookmarks") && (
           <div
             className="fixed inset-0 bg-black/50 md:hidden"
             onClick={() => setMobileView("chat")}
           />
         )}
-        <div className={`relative z-50 h-full ${activeThreadId || showPinnedMessages || showSearch ? "w-80" : "w-56"}`}>
+        <div className={`relative z-50 h-full ${activeThreadId || showPinnedMessages || showSearch || showBookmarks ? "w-80" : "w-56"}`}>
           {activeThreadId && activeChannel ? (
             <ThreadPanel
               parentMessageId={activeThreadId}
@@ -192,6 +204,18 @@ export function ChatLayout() {
               onNavigateToChannel={(channelId) => {
                 setActiveChannelId(channelId);
                 setShowSearch(false);
+                setMobileView("chat");
+              }}
+            />
+          ) : showBookmarks ? (
+            <BookmarkedMessages
+              onClose={() => {
+                setShowBookmarks(false);
+                if (mobileView === "bookmarks") setMobileView("chat");
+              }}
+              onNavigateToChannel={(channelId) => {
+                setActiveChannelId(channelId);
+                setShowBookmarks(false);
                 setMobileView("chat");
               }}
             />

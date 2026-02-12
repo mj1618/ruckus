@@ -31,6 +31,12 @@ const schema = defineSchema({
     replyCount: v.optional(v.number()),
     latestReplyTime: v.optional(v.number()),
     type: v.optional(v.union(v.literal("action"), v.literal("poll"), v.literal("system"))),
+    attachments: v.optional(v.array(v.object({
+      storageId: v.id("_storage"),
+      filename: v.string(),
+      contentType: v.string(),
+      size: v.number(),
+    }))),
   })
     .index("by_channelId", ["channelId"])
     .index("by_parentMessageId", ["parentMessageId"])
@@ -90,6 +96,27 @@ const schema = defineSchema({
   })
     .index("by_pollId", ["pollId"])
     .index("by_pollId_userId", ["pollId", "userId"]),
+
+  linkPreviews: defineTable({
+    messageId: v.id("messages"),
+    url: v.string(),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+    siteName: v.optional(v.string()),
+    domain: v.string(),
+    fetchedAt: v.number(),
+  })
+    .index("by_messageId", ["messageId"]),
+
+  bookmarks: defineTable({
+    userId: v.id("users"),
+    messageId: v.id("messages"),
+    channelId: v.id("channels"),
+    savedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_messageId", ["userId", "messageId"]),
 });
 
 export default schema;

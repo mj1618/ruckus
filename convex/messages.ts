@@ -1,5 +1,13 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
 
 export const sendMessage = mutation({
   args: {
@@ -7,11 +15,20 @@ export const sendMessage = mutation({
     userId: v.id("users"),
     text: v.string(),
     parentMessageId: v.optional(v.id("messages")),
+    attachments: v.optional(v.array(v.object({
+      storageId: v.id("_storage"),
+      filename: v.string(),
+      contentType: v.string(),
+      size: v.number(),
+    }))),
   },
   handler: async (ctx, args) => {
     const text = args.text.trim();
-    if (text.length === 0) {
+    if (text.length === 0 && (!args.attachments || args.attachments.length === 0)) {
       throw new Error("Message cannot be empty");
+    }
+    if (args.attachments && args.attachments.length > 5) {
+      throw new Error("Maximum 5 attachments per message");
     }
     if (text.length > 4000) {
       throw new Error("Message cannot exceed 4000 characters");
@@ -53,7 +70,7 @@ export const sendMessage = mutation({
       });
     }
 
-    await ctx.db.insert("messages", {
+    const messageId = await ctx.db.insert("messages", {
       channelId,
       userId: args.userId,
       text: messageText,
@@ -61,7 +78,21 @@ export const sendMessage = mutation({
       ...(args.parentMessageId
         ? { parentMessageId: args.parentMessageId }
         : {}),
+      ...(args.attachments && args.attachments.length > 0
+        ? { attachments: args.attachments }
+        : {}),
     });
+
+    // Schedule link preview fetches for URLs in the message
+    const urlRegex = /https?:\/\/[^\s<>]+/gi;
+    const urls = messageText.match(urlRegex) || [];
+    const uniqueUrls = [...new Set(urls)].slice(0, 3);
+    for (const url of uniqueUrls) {
+      await ctx.scheduler.runAfter(0, internal.linkPreviews.fetchLinkPreview, {
+        messageId,
+        url,
+      });
+    }
 
     // Clear typing indicator for this user in this channel
     const typingIndicator = await ctx.db
@@ -139,7 +170,7 @@ export const getMessages = query({
       }
     }
 
-    return topLevelMessages.map((m, i) => {
+    return Promise.all(topLevelMessages.map(async (m, i) => {
       const msgReactions = allReactions[i];
       const emojiMap = new Map<
         string,
@@ -165,6 +196,15 @@ export const getMessages = query({
         usernames: data.usernames,
       }));
 
+      const attachmentsWithUrls = m.attachments
+        ? await Promise.all(
+            m.attachments.map(async (att) => ({
+              ...att,
+              url: await ctx.storage.getUrl(att.storageId),
+            }))
+          )
+        : undefined;
+
       return {
         _id: m._id,
         text: m.text,
@@ -179,8 +219,9 @@ export const getMessages = query({
           avatarColor: "#6b7280",
         },
         reactions,
+        attachments: attachmentsWithUrls,
       };
-    });
+    }));
   },
 });
 
@@ -260,7 +301,7 @@ export const getThreadMessages = query({
       }
     }
 
-    function formatMessage(
+    async function formatMessage(
       m: typeof parent,
       reactions: (typeof allReactions)[0]
     ) {
@@ -281,6 +322,16 @@ export const getThreadMessages = query({
           });
         }
       }
+
+      const attachmentsWithUrls = m!.attachments
+        ? await Promise.all(
+            m!.attachments.map(async (att) => ({
+              ...att,
+              url: await ctx.storage.getUrl(att.storageId),
+            }))
+          )
+        : undefined;
+
       return {
         _id: m!._id,
         text: m!.text,
@@ -300,12 +351,13 @@ export const getThreadMessages = query({
           userIds: data.userIds,
           usernames: data.usernames,
         })),
+        attachments: attachmentsWithUrls,
       };
     }
 
     return {
-      parent: formatMessage(parent, allReactions[0]),
-      replies: replies.map((r, i) => formatMessage(r, allReactions[i + 1])),
+      parent: await formatMessage(parent, allReactions[0]),
+      replies: await Promise.all(replies.map((r, i) => formatMessage(r, allReactions[i + 1]))),
     };
   },
 });
@@ -435,6 +487,16 @@ export const deleteMessage = mutation({
 
     await Promise.all(
       reactions.map((r) => ctx.db.delete("reactions", r._id))
+    );
+
+    // Delete all link previews for this message
+    const linkPreviews = await ctx.db
+      .query("linkPreviews")
+      .withIndex("by_messageId", (q) => q.eq("messageId", args.messageId))
+      .collect();
+
+    await Promise.all(
+      linkPreviews.map((lp) => ctx.db.delete("linkPreviews", lp._id))
     );
 
     await ctx.db.delete("messages", args.messageId);

@@ -18,9 +18,37 @@ export function MessageList({ channelId, onReplyInThread }: MessageListProps) {
   const { user } = useUser();
   const markRead = useMutation(api.channelReads.markChannelRead);
 
+  const messageIds = useMemo(
+    () => (messages ?? []).map((m) => m._id),
+    [messages]
+  );
+  const linkPreviews = useQuery(
+    api.linkPreviews.getLinkPreviews,
+    messageIds.length > 0 ? { messageIds } : "skip"
+  );
+  const previewsByMessageId = useMemo(() => {
+    const map = new Map<string, typeof linkPreviews>();
+    if (!linkPreviews) return map;
+    for (const p of linkPreviews) {
+      const existing = map.get(p.messageId) ?? [];
+      existing.push(p);
+      map.set(p.messageId, existing);
+    }
+    return map;
+  }, [linkPreviews]);
+
+  const bookmarkedMessageIds = useQuery(
+    api.bookmarks.getBookmarkedMessageIds,
+    user ? { userId: user._id, channelId } : "skip"
+  );
+
   const pinnedSet = useMemo(
     () => new Set(pinnedMessageIds ?? []),
     [pinnedMessageIds]
+  );
+  const bookmarkedSet = useMemo(
+    () => new Set(bookmarkedMessageIds ?? []),
+    [bookmarkedMessageIds]
   );
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -88,6 +116,8 @@ export function MessageList({ channelId, onReplyInThread }: MessageListProps) {
             currentUserId={user?._id}
             onReplyInThread={onReplyInThread}
             isPinned={pinnedSet.has(message._id)}
+            isBookmarked={bookmarkedSet.has(message._id)}
+            linkPreviews={previewsByMessageId.get(message._id)}
           />
         );
       })}

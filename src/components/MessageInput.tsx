@@ -1,12 +1,13 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { useUser } from "@/components/UserContext";
 import { MentionAutocomplete } from "@/components/MentionAutocomplete";
 import { SlashCommandHint, SLASH_COMMANDS } from "@/components/SlashCommandHint";
+import { GifPicker } from "@/components/GifPicker";
 
 interface MessageInputProps {
   channelId: Id<"channels">;
@@ -29,8 +30,10 @@ export function MessageInput({ channelId, channelName, parentMessageId, placehol
   const clearUserStatus = useMutation(api.users.clearStatus);
   const setTyping = useMutation(api.typing.setTyping);
   const clearTyping = useMutation(api.typing.clearTyping);
+  const searchGifsAction = useAction(api.giphy.searchGifs);
 
   const onlineUsers = useQuery(api.users.getOnlineUsers);
+  const [showGifPicker, setShowGifPicker] = useState(false);
 
   const [slashState, setSlashState] = useState<{
     active: boolean;
@@ -149,6 +152,18 @@ export function MessageInput({ channelId, channelName, parentMessageId, placehol
             : "/me cleared their status",
           ...(parentMessageId ? { parentMessageId } : {}),
         });
+      } else if (trimmed.toLowerCase().startsWith("/giphy ")) {
+        const giphyQuery = trimmed.slice(7).trim();
+        if (!giphyQuery) throw new Error("/giphy requires a search term");
+        const results = await searchGifsAction({ query: giphyQuery, limit: 8 });
+        if (results.length === 0) throw new Error("No GIFs found for: " + giphyQuery);
+        const gif = results[Math.floor(Math.random() * results.length)];
+        await sendMessage({
+          channelId,
+          userId: user._id,
+          text: `![GIF](${gif.url})`,
+          ...(parentMessageId ? { parentMessageId } : {}),
+        });
       } else {
         // /me and /shrug are handled server-side; everything else is a normal message
         await sendMessage({
@@ -165,6 +180,17 @@ export function MessageInput({ channelId, channelName, parentMessageId, placehol
       textareaRef.current?.focus();
     }
   };
+
+  async function handleGifSelect(gifUrl: string) {
+    if (!user) return;
+    setShowGifPicker(false);
+    await sendMessage({
+      channelId,
+      userId: user._id,
+      text: `![GIF](${gifUrl})`,
+      ...(parentMessageId ? { parentMessageId } : {}),
+    });
+  }
 
   function handleSlashSelect(command: string) {
     setText(command + " ");
@@ -331,6 +357,22 @@ export function MessageInput({ channelId, channelName, parentMessageId, placehol
           {showCharCount && (
             <span className="text-xs text-zinc-500">{text.length}/4000</span>
           )}
+          <div className="relative">
+            <button
+              type="button"
+              className="rounded px-1.5 py-0.5 text-xs font-bold text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-200"
+              onClick={() => setShowGifPicker((v) => !v)}
+              title="Send a GIF"
+            >
+              GIF
+            </button>
+            {showGifPicker && (
+              <GifPicker
+                onSelect={handleGifSelect}
+                onClose={() => setShowGifPicker(false)}
+              />
+            )}
+          </div>
           {text.trim() && (
             <button
               onClick={handleSend}

@@ -162,6 +162,14 @@ const markdownComponents: Components = {
   li: ({ children }) => (
     <li className="my-0.5">{wrapTextChildren(children)}</li>
   ),
+  img: ({ src, alt }) => (
+    <img
+      src={src}
+      alt={alt ?? ""}
+      className="my-1 max-w-[300px] rounded-lg"
+      loading="lazy"
+    />
+  ),
   hr: () => (
     <hr className="my-2 border-zinc-700" />
   ),

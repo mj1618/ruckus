@@ -7,6 +7,8 @@ import { Id } from "../../convex/_generated/dataModel";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { MessageText } from "@/components/MessageText";
 import { PollMessage } from "@/components/PollMessage";
+import { LinkPreview } from "@/components/LinkPreview";
+import { MessageAttachments } from "@/components/MessageAttachments";
 
 interface MessageItemProps {
   message: {
@@ -31,11 +33,27 @@ interface MessageItemProps {
       userIds: string[];
       usernames: string[];
     }>;
+    attachments?: Array<{
+      storageId: string;
+      filename: string;
+      contentType: string;
+      size: number;
+      url: string | null;
+    }>;
   };
   isGrouped: boolean;
   currentUserId: Id<"users"> | undefined;
   onReplyInThread?: (messageId: Id<"messages">) => void;
   isPinned?: boolean;
+  isBookmarked?: boolean;
+  linkPreviews?: Array<{
+    url: string;
+    title?: string;
+    description?: string;
+    imageUrl?: string;
+    siteName?: string;
+    domain: string;
+  }>;
 }
 
 function formatTimestamp(ts: number): string {
@@ -116,7 +134,7 @@ function ReactionBar({
   );
 }
 
-export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread, isPinned }: MessageItemProps) {
+export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread, isPinned, isBookmarked, linkPreviews }: MessageItemProps) {
   const [showPicker, setShowPicker] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
@@ -125,6 +143,7 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
   const deleteMessage = useMutation(api.messages.deleteMessage);
   const pinMessage = useMutation(api.pins.pinMessage);
   const unpinMessage = useMutation(api.pins.unpinMessage);
+  const toggleBookmark = useMutation(api.bookmarks.toggleBookmark);
 
   const isOwnMessage = currentUserId === message.user._id;
 
@@ -159,6 +178,11 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
     } else {
       pinMessage({ messageId: message._id, userId: currentUserId });
     }
+  }
+
+  function handleToggleBookmark() {
+    if (!currentUserId) return;
+    toggleBookmark({ userId: currentUserId, messageId: message._id });
   }
 
   function handleEditKeyDown(e: React.KeyboardEvent) {
@@ -214,6 +238,17 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
             📌
           </button>
         )}
+        {/* Bookmark button */}
+        <button
+          type="button"
+          className={`px-1.5 py-0.5 text-sm hover:bg-zinc-700 ${
+            isBookmarked ? "text-indigo-400" : "text-zinc-400 hover:text-zinc-200"
+          }`}
+          onClick={handleToggleBookmark}
+          title={isBookmarked ? "Remove bookmark" : "Bookmark message"}
+        >
+          🔖
+        </button>
         {/* Edit button - only for own messages */}
         {isOwnMessage && (
           <button
@@ -273,6 +308,18 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
     </div>
   );
 
+  const attachmentCards = message.attachments && message.attachments.length > 0 && (
+    <MessageAttachments attachments={message.attachments} />
+  );
+
+  const linkPreviewCards = linkPreviews && linkPreviews.length > 0 && (
+    <div>
+      {linkPreviews.filter((p) => p.title || p.description).map((preview) => (
+        <LinkPreview key={preview.url} preview={preview} />
+      ))}
+    </div>
+  );
+
   const threadIndicator = message.replyCount && message.replyCount > 0 && (
     <button
       type="button"
@@ -290,6 +337,10 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
     <div className="text-xs text-amber-500/70">📌 Pinned</div>
   );
 
+  const bookmarkIndicator = isBookmarked && (
+    <div className="text-xs text-indigo-500/70">🔖 Saved</div>
+  );
+
   // Action messages: * username does something *
   if (message.type === "action") {
     return (
@@ -299,6 +350,7 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
           <span className="font-medium text-zinc-300">{message.user.username}</span>{" "}
           <MessageText text={message.text} />
         </div>
+        {attachmentCards}
         <ReactionBar
           reactions={message.reactions}
           currentUserId={currentUserId}
@@ -345,7 +397,10 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
       <div className="group relative -mt-1 rounded py-0.5 pl-[52px] pr-2 hover:bg-zinc-800/30">
         {!isEditing && hoverToolbar}
         {pinIndicator}
+        {bookmarkIndicator}
         {messageContent}
+        {attachmentCards}
+        {linkPreviewCards}
         {threadIndicator}
         <ReactionBar
           reactions={message.reactions}
@@ -376,7 +431,10 @@ export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread
           <span className="text-xs text-zinc-500">{formatTimestamp(message._creationTime)}</span>
         </div>
         {pinIndicator}
+        {bookmarkIndicator}
         {messageContent}
+        {attachmentCards}
+        {linkPreviewCards}
         {threadIndicator}
         <ReactionBar
           reactions={message.reactions}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
@@ -8,6 +8,7 @@ import { useUser } from "@/components/UserContext";
 import { MessageItem } from "@/components/MessageItem";
 import { MessageInput } from "@/components/MessageInput";
 import { MessageText } from "@/components/MessageText";
+import { LinkPreview } from "@/components/LinkPreview";
 
 interface ThreadPanelProps {
   parentMessageId: Id<"messages">;
@@ -36,6 +37,26 @@ function formatTimestamp(ts: number): string {
 export function ThreadPanel({ parentMessageId, channelId, channelName, onClose }: ThreadPanelProps) {
   const threadData = useQuery(api.messages.getThreadMessages, { parentMessageId: parentMessageId });
   const { user } = useUser();
+
+  const threadMessageIds = useMemo(() => {
+    if (!threadData) return [];
+    return [threadData.parent._id, ...threadData.replies.map((r) => r._id)];
+  }, [threadData]);
+  const linkPreviews = useQuery(
+    api.linkPreviews.getLinkPreviews,
+    threadMessageIds.length > 0 ? { messageIds: threadMessageIds } : "skip"
+  );
+  const previewsByMessageId = useMemo(() => {
+    const map = new Map<string, typeof linkPreviews>();
+    if (!linkPreviews) return map;
+    for (const p of linkPreviews) {
+      const existing = map.get(p.messageId) ?? [];
+      existing.push(p);
+      map.set(p.messageId, existing);
+    }
+    return map;
+  }, [linkPreviews]);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevLengthRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -122,6 +143,9 @@ export function ThreadPanel({ parentMessageId, channelId, channelName, onClose }
                   <span className="ml-1 inline text-xs text-zinc-500">(edited)</span>
                 )}
               </div>
+              {previewsByMessageId.get(parent._id)?.filter((p) => p.title || p.description).map((preview) => (
+                <LinkPreview key={preview.url} preview={preview} />
+              ))}
             </div>
           </div>
         </div>
@@ -146,6 +170,7 @@ export function ThreadPanel({ parentMessageId, channelId, channelName, onClose }
                 message={reply}
                 isGrouped={isGrouped}
                 currentUserId={user?._id}
+                linkPreviews={previewsByMessageId.get(reply._id)}
               />
             );
           })}

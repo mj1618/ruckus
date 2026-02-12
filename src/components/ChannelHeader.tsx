@@ -17,9 +17,11 @@ interface ChannelHeaderProps {
   showPins?: boolean;
   onToggleSearch: () => void;
   showSearch?: boolean;
+  onToggleBookmarks: () => void;
+  showBookmarks?: boolean;
 }
 
-export function ChannelHeader({ channel, onToggleSidebar, onToggleUsers, onTogglePins, showPins, onToggleSearch, showSearch }: ChannelHeaderProps) {
+export function ChannelHeader({ channel, onToggleSidebar, onToggleUsers, onTogglePins, showPins, onToggleSearch, showSearch, onToggleBookmarks, showBookmarks }: ChannelHeaderProps) {
   const [isEditingTopic, setIsEditingTopic] = useState(false);
   const [topicInput, setTopicInput] = useState(channel.topic ?? "");
   const updateTopic = useMutation(api.channels.updateTopic);
@@ -77,6 +79,15 @@ export function ChannelHeader({ channel, onToggleSidebar, onToggleUsers, onToggl
         title="Search messages (⌘K)"
       >
         🔍
+      </button>
+
+      {/* Saved messages button */}
+      <button
+        onClick={onToggleBookmarks}
+        className={`ml-3 text-sm ${showBookmarks ? "text-indigo-400" : "text-zinc-400 hover:text-zinc-200"}`}
+        title="Saved messages"
+      >
+        🔖
       </button>
 
       {/* Pinned messages button */}
