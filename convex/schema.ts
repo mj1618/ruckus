@@ -39,6 +39,14 @@ const schema = defineSchema({
   })
     .index("by_user_channel", ["userId", "channelId"])
     .index("by_user", ["userId"]),
+
+  reactions: defineTable({
+    messageId: v.id("messages"),
+    userId: v.id("users"),
+    emoji: v.string(),
+  })
+    .index("by_messageId", ["messageId"])
+    .index("by_messageId_emoji", ["messageId", "emoji"]),
 });
 
 export default schema;

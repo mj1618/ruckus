@@ -74,7 +74,7 @@ export function MessageList({ channelId }: MessageListProps) {
           message._creationTime - prev._creationTime < 5 * 60 * 1000;
 
         return (
-          <MessageItem key={message._id} message={message} isGrouped={isGrouped} />
+          <MessageItem key={message._id} message={message} isGrouped={isGrouped} currentUserId={user?._id} />
         );
       })}
       <div ref={bottomRef} />

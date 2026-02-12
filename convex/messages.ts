@@ -60,15 +60,63 @@ export const getMessages = query({
         .map((u) => [u._id, { _id: u._id, username: u.username, avatarColor: u.avatarColor }])
     );
 
-    return messages.map((m) => ({
-      _id: m._id,
-      text: m.text,
-      _creationTime: m._creationTime,
-      user: userMap.get(m.userId) ?? {
-        _id: m.userId,
-        username: "Unknown",
-        avatarColor: "#6b7280",
-      },
-    }));
+    // Fetch reactions for all messages in parallel
+    const allReactions = await Promise.all(
+      messages.map((m) =>
+        ctx.db
+          .query("reactions")
+          .withIndex("by_messageId", (q) => q.eq("messageId", m._id))
+          .collect()
+      )
+    );
+
+    // Fetch unique reactor user info (reuse from userMap if already present)
+    const reactorUserIds = [
+      ...new Set(allReactions.flat().map((r) => r.userId)),
+    ];
+    const missingReactorIds = reactorUserIds.filter((id) => !userMap.has(id));
+    if (missingReactorIds.length > 0) {
+      const reactorUsers = await Promise.all(
+        missingReactorIds.map((id) => ctx.db.get("users", id))
+      );
+      for (const u of reactorUsers) {
+        if (u) {
+          userMap.set(u._id, { _id: u._id, username: u.username, avatarColor: u.avatarColor });
+        }
+      }
+    }
+
+    return messages.map((m, i) => {
+      const msgReactions = allReactions[i];
+      const emojiMap = new Map<string, { userIds: string[]; usernames: string[] }>();
+      for (const r of msgReactions) {
+        const username = userMap.get(r.userId)?.username ?? "Unknown";
+        const existing = emojiMap.get(r.emoji);
+        if (existing) {
+          existing.userIds.push(r.userId);
+          existing.usernames.push(username);
+        } else {
+          emojiMap.set(r.emoji, { userIds: [r.userId], usernames: [username] });
+        }
+      }
+      const reactions = Array.from(emojiMap.entries()).map(([emoji, data]) => ({
+        emoji,
+        count: data.userIds.length,
+        userIds: data.userIds,
+        usernames: data.usernames,
+      }));
+
+      return {
+        _id: m._id,
+        text: m.text,
+        _creationTime: m._creationTime,
+        user: userMap.get(m.userId) ?? {
+          _id: m.userId,
+          username: "Unknown",
+          avatarColor: "#6b7280",
+        },
+        reactions,
+      };
+    });
   },
 });
