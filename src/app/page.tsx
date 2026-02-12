@@ -1,26 +1,34 @@
 "use client";
 
-import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
+import { UserProvider, useUser } from "@/components/UserContext";
+import { JoinScreen } from "@/components/JoinScreen";
+import { ChatLayout } from "@/components/ChatLayout";
+
+function AppContent() {
+  const { user, isLoading } = useUser();
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-950">
+        <div className="flex flex-col items-center gap-4">
+          <h1 className="text-3xl font-bold text-zinc-100">Ruckus</h1>
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-700 border-t-indigo-500" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <JoinScreen />;
+  }
+
+  return <ChatLayout />;
+}
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <main className="flex flex-col items-center gap-8 text-center">
-        <h1 className="text-5xl font-bold tracking-tight">Ruckus</h1>
-        <AuthLoading>
-          <p className="text-lg text-zinc-500">Loading...</p>
-        </AuthLoading>
-        <Unauthenticated>
-          <p className="text-lg text-zinc-600 dark:text-zinc-400">
-            Welcome to Ruckus. Sign in to get started.
-          </p>
-        </Unauthenticated>
-        <Authenticated>
-          <p className="text-lg text-zinc-600 dark:text-zinc-400">
-            You&apos;re signed in! Start building something great.
-          </p>
-        </Authenticated>
-      </main>
-    </div>
+    <UserProvider>
+      <AppContent />
+    </UserProvider>
   );
 }

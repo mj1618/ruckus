@@ -24,3 +24,25 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Dark scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3f3f46 transparent;
+}
+
+/* Typing indicator dots animation */
+.typing-dots .dot {
+  animation: typingFade 1.4s infinite;
+  opacity: 0;
+}
+.typing-dots .dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.typing-dots .dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes typingFade {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
