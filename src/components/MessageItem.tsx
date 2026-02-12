@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { EmojiPicker, EMOJI_LIST } from "@/components/EmojiPicker";
 import { MessageText } from "@/components/MessageText";
