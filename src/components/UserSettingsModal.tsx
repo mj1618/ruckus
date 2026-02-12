@@ -71,11 +71,19 @@ export function UserSettingsModal({ user, onClose }: UserSettingsModalProps) {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const { theme, setTheme } = useTheme();
 
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordSaved, setPasswordSaved] = useState(false);
+
   const setStatus = useMutation(api.users.setStatus);
   const clearStatus = useMutation(api.users.clearStatus);
   const generateUploadUrl = useMutation(api.users.generateAvatarUploadUrl);
   const updateAvatar = useMutation(api.users.updateAvatar);
   const removeAvatar = useMutation(api.users.removeAvatar);
+  const changePasswordMutation = useMutation(api.users.changePassword);
 
   function handlePickAvatar() {
     setAvatarError(null);
@@ -178,6 +186,36 @@ export function UserSettingsModal({ user, onClose }: UserSettingsModalProps) {
     await clearStatus({ userId: user._id });
     setStatusEmoji("");
     setStatusText("");
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPasswordError("");
+    if (newPassword.length < 4) {
+      setPasswordError("New password must be at least 4 characters");
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError("New passwords do not match");
+      return;
+    }
+    setPasswordSaving(true);
+    try {
+      await changePasswordMutation({
+        userId: user._id,
+        currentPassword,
+        newPassword,
+      });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      setPasswordSaved(true);
+      setTimeout(() => setPasswordSaved(false), 3000);
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : "Failed to change password");
+    } finally {
+      setPasswordSaving(false);
+    }
   }
 
   function handleLogout() {
@@ -532,9 +570,49 @@ export function UserSettingsModal({ user, onClose }: UserSettingsModalProps) {
                 </div>
 
                 <div>
+                  <div className="mb-3 text-sm font-semibold text-text-muted">Change Password</div>
+                  <form onSubmit={handleChangePassword} className="space-y-3">
+                    <input
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => { setCurrentPassword(e.target.value); setPasswordError(""); setPasswordSaved(false); }}
+                      placeholder="Current password"
+                      className="w-full rounded border border-border bg-overlay px-3 py-2 text-sm text-text outline-none focus:border-accent"
+                    />
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => { setNewPassword(e.target.value); setPasswordError(""); setPasswordSaved(false); }}
+                      placeholder="New password"
+                      className="w-full rounded border border-border bg-overlay px-3 py-2 text-sm text-text outline-none focus:border-accent"
+                    />
+                    <input
+                      type="password"
+                      value={confirmNewPassword}
+                      onChange={(e) => { setConfirmNewPassword(e.target.value); setPasswordError(""); setPasswordSaved(false); }}
+                      placeholder="Confirm new password"
+                      className="w-full rounded border border-border bg-overlay px-3 py-2 text-sm text-text outline-none focus:border-accent"
+                    />
+                    {passwordError && (
+                      <p className="text-xs text-danger">{passwordError}</p>
+                    )}
+                    {passwordSaved && (
+                      <p className="text-xs text-green-400">Password changed successfully</p>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={passwordSaving || !currentPassword || !newPassword || !confirmNewPassword}
+                      className="rounded bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {passwordSaving ? "Saving..." : "Change password"}
+                    </button>
+                  </form>
+                </div>
+
+                <div>
                   <div className="mb-3 text-sm font-semibold text-text-muted">Log Out</div>
                   <p className="mb-3 text-sm text-text-secondary">
-                    This will log you out and clear your session. You can log back in with the same username.
+                    This will log you out and clear your session. You can log back in with your username and password.
                   </p>
                   <button
                     type="button"

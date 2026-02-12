@@ -160,6 +160,41 @@ export const login = mutation({
   },
 });
 
+export const changePassword = mutation({
+  args: {
+    userId: v.id("users"),
+    currentPassword: v.string(),
+    newPassword: v.string(),
+  },
+  handler: async (ctx, args) => {
+    if (args.newPassword.length < 4) {
+      throw new Error("New password must be at least 4 characters");
+    }
+
+    const user = await ctx.db.get("users", args.userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (!user.passwordHash || !user.passwordSalt) {
+      throw new Error("This account does not have a password set");
+    }
+
+    const currentHash = await hashPassword(args.currentPassword, user.passwordSalt);
+    if (currentHash !== user.passwordHash) {
+      throw new Error("Current password is incorrect");
+    }
+
+    const newSalt = generateSalt();
+    const newHash = await hashPassword(args.newPassword, newSalt);
+
+    await ctx.db.patch("users", user._id, {
+      passwordHash: newHash,
+      passwordSalt: newSalt,
+    });
+  },
+});
+
 export const heartbeat = mutation({
   args: {
     sessionId: v.string(),
