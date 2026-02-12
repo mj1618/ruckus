@@ -14,9 +14,9 @@ tasks:
          - Propose an original, highly useful feature for agents working on the project.
 
       3. Write a Feature Plan
-         - Plan the improvement or feature and save the plan to ./swarm/todo/{incremental-number}-{task-name}.pending.md.
-         - Make sure the plan is small enough to fit into a single agents context window of about 100k tokens.
-         - You may need to break down the task into smaller pieces and create multiple task files.
+         - Plan the improvement or feature and save the tasks to ./swarm/todo/{incremental-number}-{task-name}.todo.md.
+         - Make sure the tasks are small enough to fit into a single agents context window of about 100k tokens.
+         - You may need to break down the feature into smaller tasks and create multiple task files if it is too large. Or if it is a relatively small feature, you can just write the task in a single file.
 
       4. Exit Criteria
          - Exit immediately after writing one feature plan or if no improvements can be identified.
@@ -29,22 +29,17 @@ tasks:
          - Check for your own unfinished tasks: look for files matching `./swarm/todo/*.{SWARM_TASK_ID}.processing.md`.
          - If you find such a task, skip ahead to "Implement the Task".
 
-      2. **Claim a Pending Task**
-         - Search `./swarm/todo/` for files ending in `.pending.md`.
+      2. **Claim a Todo Task**
+         - Search `./swarm/todo/` for files ending in `.todo.md`.
          - Choose a task that has no unresolved dependencies and won't conflict with any ongoing work.
          - Claim it by renaming it to `. {SWARM_TASK_ID}.processing.md`.
-         - If no suitable pending tasks are available, skip to "If Nothing To Do".
+         - If no suitable todo tasks are available, skip to "If Nothing To Do".
 
       3. **Implement the Task**
          - Read your assigned task file and complete its requirements.
          - Add or update tests as needed, and validate your changes.
-         - Once finished, rename the file to `.completed.md` and note your work.
-         - If you are unable to finish, rename it back to `.pending.md` and briefly describe the problem encountered.
-
-      4. **If Nothing To Do**
-         - If no pending or processing tasks exist, test the current feature and report any issues found.
-         - For each issue found, create a new pending task in the appropriate `swarm/todo/{feature-name}/` folder.
-         - Exit immediately after reporting issues.
+         - Once finished, rename the file to `.done.md` and move to `swarm/done/` and note your work.
+         - If you are unable to finish, rename it back to `.todo.md` and briefly describe the problem encountered.
 
     depends_on: [planner]
 
@@ -53,13 +48,15 @@ tasks:
       # Tester Agent Prompt
 
       Check swarm/PLAN.md for the project plan. Also check SWARM_STATE_DIR for what has been done in the current iteration.
+      Focus on testing just the work done in the current iteration.
 
       ## 1. Run Unit Tests
 
-      ## 2. Build and test in a browser
+      Fix any issues you find
 
-      ## 3. Write or Improve Unit Tests
+      ## 2. Build and test in a browser - mobile and desktop viewports need to be tested.
 
+      Fix any issues you find
 
     depends_on: [coder]
 
@@ -87,7 +84,7 @@ tasks:
       Keep fixes minimal and targeted — only fix actual bugs, don't refactor or add features.
       Make sure the code still compiles and any relevant tests still pass after your fixes.
 
-      # If no bugs found
+      # Finally
 
       If the unstaged changes look correct, git commit and push and then exit immediately.
 
@@ -95,6 +92,6 @@ tasks:
 
 pipelines:
   development:
-    iterations: 50
+    iterations: 100
     parallelism: 1
     tasks: [planner, coder, tester, checker]
