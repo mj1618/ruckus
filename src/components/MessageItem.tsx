@@ -5,12 +5,17 @@ import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { EmojiPicker } from "@/components/EmojiPicker";
+import { MessageText } from "@/components/MessageText";
 
 interface MessageItemProps {
   message: {
     _id: Id<"messages">;
     text: string;
     _creationTime: number;
+    editedAt?: number;
+    replyCount?: number;
+    latestReplyTime?: number;
+    parentMessageId?: Id<"messages">;
     user: {
       _id: Id<"users">;
       username: string;
@@ -25,6 +30,7 @@ interface MessageItemProps {
   };
   isGrouped: boolean;
   currentUserId: Id<"users"> | undefined;
+  onReplyInThread?: (messageId: Id<"messages">) => void;
 }
 
 function formatTimestamp(ts: number): string {
@@ -105,40 +111,158 @@ function ReactionBar({
   );
 }
 
-export function MessageItem({ message, isGrouped, currentUserId }: MessageItemProps) {
+export function MessageItem({ message, isGrouped, currentUserId, onReplyInThread }: MessageItemProps) {
   const [showPicker, setShowPicker] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(message.text);
   const toggleReaction = useMutation(api.reactions.toggleReaction);
+  const editMessage = useMutation(api.messages.editMessage);
+  const deleteMessage = useMutation(api.messages.deleteMessage);
+
+  const isOwnMessage = currentUserId === message.user._id;
 
   function handleSelectEmoji(emoji: string) {
     if (!currentUserId) return;
     toggleReaction({ messageId: message._id, userId: currentUserId, emoji });
   }
 
+  async function handleEditSave() {
+    const trimmed = editText.trim();
+    if (!trimmed || !currentUserId) return;
+    await editMessage({ messageId: message._id, userId: currentUserId, text: trimmed });
+    setIsEditing(false);
+  }
+
+  function handleEditCancel() {
+    setEditText(message.text);
+    setIsEditing(false);
+  }
+
+  function handleDelete() {
+    if (!currentUserId) return;
+    if (window.confirm("Delete this message? This cannot be undone.")) {
+      deleteMessage({ messageId: message._id, userId: currentUserId });
+    }
+  }
+
+  function handleEditKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleEditSave();
+    }
+    if (e.key === "Escape") {
+      handleEditCancel();
+    }
+  }
+
   const hoverToolbar = (
-    <div className="absolute -top-3 right-2 z-10 flex opacity-0 transition-opacity group-hover:opacity-100">
-      <div className="relative">
-        <button
-          type="button"
-          className="rounded-md border border-zinc-700 bg-zinc-800 px-1.5 py-0.5 text-sm shadow-lg hover:bg-zinc-700"
-          onClick={() => setShowPicker((v) => !v)}
-        >
-          😀
-        </button>
-        {showPicker && (
-          <EmojiPicker
-            onSelect={handleSelectEmoji}
-            onClose={() => setShowPicker(false)}
-          />
+    <div className="absolute -top-3 right-2 z-10 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+      <div className="flex rounded-md border border-zinc-700 bg-zinc-800 shadow-lg">
+        {/* Emoji reaction button */}
+        <div className="relative">
+          <button
+            type="button"
+            className="rounded-l-md px-1.5 py-0.5 text-sm hover:bg-zinc-700"
+            onClick={() => setShowPicker((v) => !v)}
+          >
+            😀
+          </button>
+          {showPicker && (
+            <EmojiPicker
+              onSelect={handleSelectEmoji}
+              onClose={() => setShowPicker(false)}
+            />
+          )}
+        </div>
+        {/* Reply in thread button - only for top-level messages */}
+        {!message.parentMessageId && onReplyInThread && (
+          <button
+            type="button"
+            className="px-1.5 py-0.5 text-sm text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
+            onClick={() => onReplyInThread(message._id)}
+            title="Reply in thread"
+          >
+            💬
+          </button>
+        )}
+        {/* Edit button - only for own messages */}
+        {isOwnMessage && (
+          <button
+            type="button"
+            className="px-1.5 py-0.5 text-sm text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
+            onClick={() => setIsEditing(true)}
+            title="Edit message"
+          >
+            ✏️
+          </button>
+        )}
+        {/* Delete button - only for own messages */}
+        {isOwnMessage && (
+          <button
+            type="button"
+            className="rounded-r-md px-1.5 py-0.5 text-sm text-zinc-400 hover:bg-red-500/20 hover:text-red-400"
+            onClick={handleDelete}
+            title="Delete message"
+          >
+            🗑️
+          </button>
         )}
       </div>
     </div>
   );
 
+  const messageContent = isEditing ? (
+    <div className="mt-1">
+      <textarea
+        value={editText}
+        onChange={(e) => setEditText(e.target.value)}
+        onKeyDown={handleEditKeyDown}
+        className="w-full resize-none rounded border border-zinc-600 bg-zinc-700 px-2 py-1 text-sm text-zinc-100 outline-none focus:border-indigo-500"
+        maxLength={4000}
+        rows={1}
+        autoFocus
+        ref={(el) => {
+          if (el) {
+            el.style.height = "auto";
+            el.style.height = Math.min(el.scrollHeight, 120) + "px";
+          }
+        }}
+      />
+      <div className="mt-1 flex gap-2 text-xs">
+        <span className="text-zinc-500">
+          escape to <button type="button" className="text-indigo-400 hover:underline" onClick={handleEditCancel}>cancel</button>
+          {" · "}enter to <button type="button" className="text-indigo-400 hover:underline" onClick={handleEditSave}>save</button>
+        </span>
+      </div>
+    </div>
+  ) : (
+    <div className="text-sm text-zinc-300 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+      <MessageText text={message.text} />
+      {message.editedAt && (
+        <span className="ml-1 inline text-xs text-zinc-500">(edited)</span>
+      )}
+    </div>
+  );
+
+  const threadIndicator = message.replyCount && message.replyCount > 0 && (
+    <button
+      type="button"
+      className="mt-1 flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 hover:underline"
+      onClick={() => onReplyInThread?.(message._id)}
+    >
+      <span>💬</span>
+      <span>
+        {message.replyCount} {message.replyCount === 1 ? "reply" : "replies"}
+      </span>
+    </button>
+  );
+
   if (isGrouped) {
     return (
       <div className="group relative -mt-1 rounded py-0.5 pl-[52px] pr-2 hover:bg-zinc-800/30">
-        {hoverToolbar}
-        <p className="whitespace-pre-wrap text-sm text-zinc-300">{message.text}</p>
+        {!isEditing && hoverToolbar}
+        {messageContent}
+        {threadIndicator}
         <ReactionBar
           reactions={message.reactions}
           currentUserId={currentUserId}
@@ -150,7 +274,7 @@ export function MessageItem({ message, isGrouped, currentUserId }: MessageItemPr
 
   return (
     <div className="group relative mt-3 flex gap-3 rounded py-1 pr-2 first:mt-0 hover:bg-zinc-800/30">
-      {hoverToolbar}
+      {!isEditing && hoverToolbar}
       <div
         className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
         style={{ backgroundColor: message.user.avatarColor }}
@@ -162,7 +286,8 @@ export function MessageItem({ message, isGrouped, currentUserId }: MessageItemPr
           <span className="text-sm font-bold text-zinc-100">{message.user.username}</span>
           <span className="text-xs text-zinc-500">{formatTimestamp(message._creationTime)}</span>
         </div>
-        <p className="whitespace-pre-wrap text-sm text-zinc-300">{message.text}</p>
+        {messageContent}
+        {threadIndicator}
         <ReactionBar
           reactions={message.reactions}
           currentUserId={currentUserId}

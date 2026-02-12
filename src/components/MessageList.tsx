@@ -9,9 +9,10 @@ import { MessageItem } from "@/components/MessageItem";
 
 interface MessageListProps {
   channelId: Id<"channels">;
+  onReplyInThread?: (messageId: Id<"messages">) => void;
 }
 
-export function MessageList({ channelId }: MessageListProps) {
+export function MessageList({ channelId, onReplyInThread }: MessageListProps) {
   const messages = useQuery(api.messages.getMessages, { channelId });
   const { user } = useUser();
   const markRead = useMutation(api.channelReads.markChannelRead);
@@ -74,7 +75,13 @@ export function MessageList({ channelId }: MessageListProps) {
           message._creationTime - prev._creationTime < 5 * 60 * 1000;
 
         return (
-          <MessageItem key={message._id} message={message} isGrouped={isGrouped} currentUserId={user?._id} />
+          <MessageItem
+            key={message._id}
+            message={message}
+            isGrouped={isGrouped}
+            currentUserId={user?._id}
+            onReplyInThread={onReplyInThread}
+          />
         );
       })}
       <div ref={bottomRef} />

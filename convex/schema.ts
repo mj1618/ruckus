@@ -24,7 +24,13 @@ const schema = defineSchema({
     channelId: v.id("channels"),
     userId: v.id("users"),
     text: v.string(),
-  }).index("by_channelId", ["channelId"]),
+    editedAt: v.optional(v.number()),
+    parentMessageId: v.optional(v.id("messages")),
+    replyCount: v.optional(v.number()),
+    latestReplyTime: v.optional(v.number()),
+  })
+    .index("by_channelId", ["channelId"])
+    .index("by_parentMessageId", ["parentMessageId"]),
 
   typingIndicators: defineTable({
     channelId: v.id("channels"),
