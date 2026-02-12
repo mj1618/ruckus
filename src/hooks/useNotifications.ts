@@ -40,10 +40,11 @@ export function useNotifications(
     for (const mention of mentions) {
       const id = mention._id as string;
       if (shownIdsRef.current.has(id)) continue;
-      shownIdsRef.current.add(id);
 
       // Only notify when tab is not focused
       if (!document.hidden) continue;
+
+      shownIdsRef.current.add(id);
 
       const body = mention.text.length > 100
         ? mention.text.slice(0, 100) + "..."
