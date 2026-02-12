@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import { ConvexClientProvider } from "./ConvexClientProvider";
 import { ThemeProvider } from "@/components/ThemeContext";
+import { PreventZoom } from "@/components/PreventZoom";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -20,6 +21,13 @@ export const metadata: Metadata = {
   description: "Ruckus - Built with Next.js, Convex, and Tailwind CSS",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -32,7 +40,10 @@ export default function RootLayout({
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
           <ConvexClientProvider>
-            <ThemeProvider>{children}</ThemeProvider>
+            <ThemeProvider>
+              <PreventZoom />
+              {children}
+            </ThemeProvider>
           </ConvexClientProvider>
         </body>
       </html>

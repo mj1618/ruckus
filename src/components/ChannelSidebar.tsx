@@ -43,6 +43,7 @@ export function ChannelSidebar({ activeChannelId, activeConversationId, onSelect
 
   const [isCreating, setIsCreating] = useState(false);
   const [newChannelName, setNewChannelName] = useState("");
+  const [isPrivate, setIsPrivate] = useState(false);
   const [error, setError] = useState("");
   const [showSettings, setShowSettings] = useState(false);
 
@@ -52,8 +53,9 @@ export function ChannelSidebar({ activeChannelId, activeConversationId, onSelect
     if (!name || !user) return;
 
     try {
-      const channelId = await createChannel({ name, userId: user._id });
+      const channelId = await createChannel({ name, userId: user._id, isPrivate: isPrivate || undefined });
       setNewChannelName("");
+      setIsPrivate(false);
       setIsCreating(false);
       setError("");
       onSelectChannel(channelId);
@@ -71,6 +73,9 @@ export function ChannelSidebar({ activeChannelId, activeConversationId, onSelect
 
       {/* Channel list */}
       <div className="flex-1 overflow-y-auto px-2 py-2">
+        <div className="mb-1 px-3 text-xs font-semibold uppercase text-text-muted">
+          Channels
+        </div>
         {channels?.map((channel) => {
           const unreadCount = unreadMap.get(channel._id) ?? 0;
           return (
@@ -85,7 +90,7 @@ export function ChannelSidebar({ activeChannelId, activeConversationId, onSelect
                     : "text-text-muted hover:bg-hover hover:text-text-secondary"
               }`}
             >
-              <span>{channel.name === "draw" ? "✏️" : "#"} {channel.name}</span>
+              <span>{channel.name === "draw" ? "✏️" : channel.isPrivate ? "🔒" : "#"} {channel.title || channel.name}</span>
               {unreadCount > 0 && channel._id !== activeChannelId && (
                 <span className="bg-accent text-white text-xs font-medium px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
                   {unreadCount > 99 ? "99+" : unreadCount}
@@ -107,15 +112,38 @@ export function ChannelSidebar({ activeChannelId, activeConversationId, onSelect
               }}
               placeholder="channel-name"
               autoFocus
-              onBlur={() => {
-                if (!newChannelName.trim()) {
-                  setIsCreating(false);
-                  setError("");
-                }
-              }}
               className="w-full rounded border border-border bg-overlay px-2 py-1 text-sm text-text placeholder-text-muted outline-none focus:border-accent"
             />
+            <label className="mt-1.5 flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isPrivate}
+                onChange={(e) => setIsPrivate(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-border accent-accent"
+              />
+              <span className="text-xs text-text-muted">Private channel</span>
+            </label>
             {error && <p className="mt-1 text-xs text-danger">{error}</p>}
+            <div className="mt-1.5 flex gap-1.5">
+              <button
+                type="submit"
+                className="rounded bg-accent px-2 py-0.5 text-xs font-medium text-white hover:bg-accent/90"
+              >
+                Create
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreating(false);
+                  setNewChannelName("");
+                  setIsPrivate(false);
+                  setError("");
+                }}
+                className="rounded px-2 py-0.5 text-xs text-text-muted hover:bg-hover hover:text-text-secondary"
+              >
+                Cancel
+              </button>
+            </div>
           </form>
         ) : (
           <button
@@ -159,7 +187,7 @@ export function ChannelSidebar({ activeChannelId, activeConversationId, onSelect
                       <div className={`absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-[1.5px] ${
                         Date.now() - otherUser.lastSeen < 60_000
                           ? 'border-surface bg-success'
-                          : 'border-text-muted bg-surface'
+                          : 'border-surface bg-border'
                       }`} />
                     </div>
                     <span className="truncate">{otherUser.username}</span>

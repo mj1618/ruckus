@@ -63,7 +63,7 @@ export function ConversationHeader({
               avatarColor={otherUser.avatarColor}
               size="md"
             />
-            <div className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 ${isOnline ? 'border-surface bg-success' : 'border-text-muted bg-surface'}`} />
+            <div className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 ${isOnline ? 'border-surface bg-success' : 'border-surface bg-border'}`} />
           </div>
         )}
         <div>

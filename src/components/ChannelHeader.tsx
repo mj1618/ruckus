@@ -9,6 +9,7 @@ interface ChannelHeaderProps {
   channel: {
     _id: Id<"channels">;
     name: string;
+    title?: string;
     topic?: string;
     isPrivate?: boolean;
     isAdmin?: boolean;
@@ -26,9 +27,17 @@ interface ChannelHeaderProps {
 }
 
 export function ChannelHeader({ channel, onToggleSidebar, onToggleUsers, onTogglePins, showPins, onToggleSearch, showSearch, onToggleBookmarks, showBookmarks, onToggleMembers, showMembers }: ChannelHeaderProps) {
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleInput, setTitleInput] = useState(channel.title ?? "");
   const [isEditingTopic, setIsEditingTopic] = useState(false);
   const [topicInput, setTopicInput] = useState(channel.topic ?? "");
+  const updateTitle = useMutation(api.channels.updateTitle);
   const updateTopic = useMutation(api.channels.updateTopic);
+
+  const handleSaveTitle = async () => {
+    await updateTitle({ channelId: channel._id, title: titleInput.trim() });
+    setIsEditingTitle(false);
+  };
 
   const handleSaveTopic = async () => {
     await updateTopic({ channelId: channel._id, topic: topicInput.trim() });
@@ -57,32 +66,84 @@ export function ChannelHeader({ channel, onToggleSidebar, onToggleUsers, onToggl
             "#"
           )}
           {channel.name}
+          {channel.title && (
+            <>
+              <span className="text-text-muted font-normal mx-1">—</span>
+              <span className="font-medium text-text-secondary">{channel.title}</span>
+            </>
+          )}
         </h2>
-        {isEditingTopic ? (
-          <input
-            type="text"
-            value={topicInput}
-            onChange={(e) => setTopicInput(e.target.value)}
-            onBlur={handleSaveTopic}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSaveTopic();
-              if (e.key === "Escape") setIsEditingTopic(false);
-            }}
-            autoFocus
-            className="w-full bg-transparent text-xs text-text-muted outline-none"
-            placeholder="Set a topic..."
-          />
-        ) : (
-          <button
-            onClick={() => {
-              setTopicInput(channel.topic ?? "");
-              setIsEditingTopic(true);
-            }}
-            className="truncate text-xs text-text-muted hover:text-text-secondary"
-          >
-            {channel.topic || "No topic set — click to add one"}
-          </button>
-        )}
+        <div className="flex items-center gap-2 text-xs text-text-muted">
+          {isEditingTitle ? (
+            <input
+              type="text"
+              value={titleInput}
+              onChange={(e) => setTitleInput(e.target.value)}
+              onBlur={handleSaveTitle}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSaveTitle();
+                if (e.key === "Escape") setIsEditingTitle(false);
+              }}
+              autoFocus
+              className="bg-transparent text-xs text-text-muted outline-none"
+              placeholder="Set a title..."
+            />
+          ) : isEditingTopic ? (
+            <input
+              type="text"
+              value={topicInput}
+              onChange={(e) => setTopicInput(e.target.value)}
+              onBlur={handleSaveTopic}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSaveTopic();
+                if (e.key === "Escape") setIsEditingTopic(false);
+              }}
+              autoFocus
+              className="bg-transparent text-xs text-text-muted outline-none flex-1"
+              placeholder="Set a topic..."
+            />
+          ) : (
+            <>
+              {!channel.title && (
+                <>
+                  <button
+                    onClick={() => {
+                      setTitleInput(channel.title ?? "");
+                      setIsEditingTitle(true);
+                    }}
+                    className="hover:text-text-secondary"
+                  >
+                    Add a title
+                  </button>
+                  <span className="text-text-muted/50">|</span>
+                </>
+              )}
+              {channel.title && (
+                <>
+                  <button
+                    onClick={() => {
+                      setTitleInput(channel.title ?? "");
+                      setIsEditingTitle(true);
+                    }}
+                    className="hover:text-text-secondary"
+                  >
+                    Edit title
+                  </button>
+                  <span className="text-text-muted/50">|</span>
+                </>
+              )}
+              <button
+                onClick={() => {
+                  setTopicInput(channel.topic ?? "");
+                  setIsEditingTopic(true);
+                }}
+                className="truncate hover:text-text-secondary"
+              >
+                {channel.topic || "Add a topic"}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Members button (private channel admins only) */}

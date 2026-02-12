@@ -83,6 +83,18 @@ export const createChannel = mutation({
   },
 });
 
+export const updateTitle = mutation({
+  args: {
+    channelId: v.id("channels"),
+    title: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch("channels", args.channelId, {
+      title: args.title || undefined,
+    });
+  },
+});
+
 export const updateTopic = mutation({
   args: {
     channelId: v.id("channels"),

@@ -40,7 +40,7 @@ export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
                 <img
                   src={img.url}
                   alt={img.filename}
-                  className="max-h-[300px] max-w-[400px] object-contain"
+                  className="max-h-[300px] max-w-full object-contain md:max-w-[400px]"
                 />
               ) : (
                 <div className="flex h-[100px] w-[200px] items-center justify-center bg-overlay text-sm text-text-muted">

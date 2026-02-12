@@ -39,6 +39,7 @@ const schema = defineSchema({
 
   channels: defineTable({
     name: v.string(),
+    title: v.optional(v.string()),
     topic: v.optional(v.string()),
     createdBy: v.id("users"),
     isPrivate: v.optional(v.boolean()), // undefined/false = public

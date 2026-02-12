@@ -27,7 +27,7 @@ export function PollMessage({ messageId, currentUserId }: PollMessageProps) {
   }
 
   return (
-    <div className="my-1 max-w-md rounded-lg border border-border bg-overlay/50 p-3">
+    <div className="my-1 max-w-full rounded-lg border border-border bg-overlay/50 p-3 md:max-w-md">
       <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-text">
         <span>📊</span>
         <span>{poll.question}</span>

@@ -23,7 +23,7 @@ export function LinkPreview({ preview }: LinkPreviewProps) {
       href={preview.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="mt-1 flex max-w-md gap-3 rounded-md border border-border bg-overlay/50 p-3 transition-colors hover:bg-overlay"
+      className="mt-1 flex max-w-full gap-3 rounded-md border border-border bg-overlay/50 p-3 transition-colors hover:bg-overlay md:max-w-md"
     >
       {preview.imageUrl && !imgError && (
         <img

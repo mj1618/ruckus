@@ -41,13 +41,25 @@ export function OnlineUsers({ channelId, channelName, isPrivate, onStartDM }: On
 
   const renderUser = (user: NonNullable<typeof users>[number]) => {
     const isCurrentUser = currentUser?._id === user._id;
+    const canStartDM = !isCurrentUser && onStartDM;
 
     return (
       <div
         key={user._id}
-        className="group flex items-center gap-2 rounded px-2 py-1.5 hover:bg-hover"
+        onClick={canStartDM ? () => handleStartDM(user._id) : undefined}
+        className={`group flex items-center gap-2 rounded px-2 py-1.5 hover:bg-hover ${
+          canStartDM ? "cursor-pointer active:bg-selected md:cursor-default md:active:bg-hover" : ""
+        }`}
       >
-        <div className="relative">
+        <button
+          onClick={canStartDM ? (e) => {
+            e.stopPropagation();
+            handleStartDM(user._id);
+          } : undefined}
+          className={`relative ${canStartDM ? "cursor-pointer" : ""}`}
+          disabled={!canStartDM}
+          title={canStartDM ? `Message ${user.username}` : undefined}
+        >
           <Avatar
             username={user.username}
             avatarColor={user.avatarColor}
@@ -56,10 +68,10 @@ export function OnlineUsers({ channelId, channelName, isPrivate, onStartDM }: On
           />
           <div
             className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface ${
-              user.isOnline ? "bg-success" : "bg-text-muted/40"
+              user.isOnline ? "bg-success" : "bg-border"
             }`}
           />
-        </div>
+        </button>
         <div className="min-w-0 flex-1">
           <span className={`truncate text-sm ${user.isOnline ? "text-text-secondary" : "text-text-muted"}`}>
             {user.username}
@@ -79,7 +91,10 @@ export function OnlineUsers({ channelId, channelName, isPrivate, onStartDM }: On
         </div>
         {!isCurrentUser && onStartDM && (
           <button
-            onClick={() => handleStartDM(user._id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleStartDM(user._id);
+            }}
             className="hidden shrink-0 rounded bg-accent px-2 py-1 text-xs text-white hover:bg-accent-hover group-hover:block"
             title={`Message ${user.username}`}
           >

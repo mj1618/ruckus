@@ -111,13 +111,13 @@ const markdownComponents: Components = {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-accent underline decoration-accent/50 hover:decoration-accent"
+      className="text-accent underline decoration-accent/50 hover:decoration-accent break-all"
     >
       {children}
     </a>
   ),
   pre: ({ children }) => (
-    <pre className="my-1 overflow-x-auto rounded-md bg-base p-3 text-sm">
+    <pre className="my-1 max-w-full overflow-x-auto rounded-md bg-base p-3 text-sm">
       {children}
     </pre>
   ),
@@ -166,12 +166,17 @@ const markdownComponents: Components = {
     <img
       src={src}
       alt={alt ?? ""}
-      className="my-1 max-w-[300px] rounded-lg"
+      className="my-1 max-w-full rounded-lg md:max-w-[300px]"
       loading="lazy"
     />
   ),
   hr: () => (
     <hr className="my-2 border-border" />
+  ),
+  table: ({ children }) => (
+    <div className="my-1 max-w-full overflow-x-auto">
+      <table className="border-collapse text-sm">{children}</table>
+    </div>
   ),
   td: ({ children }) => (
     <td className="border border-border px-2 py-1">{wrapTextChildren(children)}</td>

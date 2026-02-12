@@ -484,7 +484,7 @@ export function MessageInput({ channelId, channelName, conversationId, conversat
   const showCharCount = text.length > 3800;
 
   return (
-    <div className="relative">
+    <div className="relative min-w-0 overflow-hidden">
       {slashState && (
         <SlashCommandHint
           query={slashState.query}
@@ -537,12 +537,12 @@ export function MessageInput({ channelId, channelName, conversationId, conversat
       )}
       {/* Reply preview bar */}
       {replyToMessage && (
-        <div className="mb-2 flex items-center justify-between rounded-lg border border-border bg-overlay/50 px-3 py-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="text-text-muted">↩</span>
-            <span className="text-sm text-text-muted">Replying to</span>
-            <span className="text-sm font-medium text-text-secondary">@{replyToMessage.user.username}</span>
-            <span className="truncate text-sm text-text-muted">
+        <div className="mb-2 flex min-w-0 items-center justify-between overflow-hidden rounded-lg border border-border bg-overlay/50 px-3 py-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+            <span className="shrink-0 text-text-muted">↩</span>
+            <span className="hidden shrink-0 text-sm text-text-muted sm:inline">Replying to</span>
+            <span className="shrink-0 text-sm font-medium text-text-secondary">@{replyToMessage.user.username}</span>
+            <span className="min-w-0 truncate text-sm text-text-muted">
               {replyToMessage.text.length > 50 
                 ? replyToMessage.text.slice(0, 50) + "…" 
                 : replyToMessage.text}
@@ -550,7 +550,7 @@ export function MessageInput({ channelId, channelName, conversationId, conversat
           </div>
           <button
             type="button"
-            className="ml-2 rounded p-1 text-text-muted hover:bg-active hover:text-text-secondary"
+            className="ml-2 shrink-0 rounded p-1 text-text-muted hover:bg-active hover:text-text-secondary"
             onClick={onCancelReply}
             title="Cancel reply"
           >
@@ -568,7 +568,7 @@ export function MessageInput({ channelId, channelName, conversationId, conversat
         className="hidden"
         onChange={handleFileInputChange}
       />
-      <div className="flex items-end gap-2 rounded-lg border border-border bg-overlay px-3 py-2">
+      <div className="flex min-w-0 items-end gap-2 rounded-lg border border-border bg-overlay px-3 py-2">
         <textarea
           ref={textareaRef}
           value={text}
@@ -578,15 +578,15 @@ export function MessageInput({ channelId, channelName, conversationId, conversat
           placeholder={placeholder ?? (channelName ? `Message #${channelName}` : `Message ${conversationName}`)}
           maxLength={4000}
           rows={1}
-          className="max-h-[120px] min-h-[24px] flex-1 resize-none bg-transparent text-sm text-text placeholder-text-muted outline-none"
+          className="max-h-[120px] min-h-[24px] min-w-0 flex-1 resize-none bg-transparent text-base text-text placeholder-text-muted outline-none sm:text-sm"
         />
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           {showCharCount && (
-            <span className="text-xs text-text-muted">{text.length}/4000</span>
+            <span className="hidden text-xs text-text-muted sm:inline">{text.length}/4000</span>
           )}
           <button
             type="button"
-            className="rounded px-1.5 py-0.5 text-text-muted transition-colors hover:bg-active hover:text-text"
+            className="rounded p-1 text-text-muted transition-colors hover:bg-active hover:text-text sm:px-1.5 sm:py-0.5"
             onClick={() => fileInputRef.current?.click()}
             title="Attach files"
           >
@@ -597,7 +597,7 @@ export function MessageInput({ channelId, channelName, conversationId, conversat
           <div className="relative">
             <button
               type="button"
-              className="rounded px-1.5 py-0.5 text-xs font-bold text-text-muted transition-colors hover:bg-active hover:text-text"
+              className="rounded p-1 text-xs font-bold text-text-muted transition-colors hover:bg-active hover:text-text sm:px-1.5 sm:py-0.5"
               onClick={() => setShowGifPicker((v) => !v)}
               title="Send a GIF"
             >
@@ -614,7 +614,7 @@ export function MessageInput({ channelId, channelName, conversationId, conversat
             <button
               onClick={handleSend}
               disabled={isSending}
-              className="rounded bg-accent px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
+              className="rounded bg-accent px-2 py-1 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50 sm:px-3"
             >
               Send
             </button>

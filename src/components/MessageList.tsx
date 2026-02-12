@@ -96,7 +96,7 @@ export function MessageList({ channelId, conversationId, onReplyInThread, onRepl
 
     if (isAtBottom || messages.length !== prevLengthRef.current) {
       if (prevLengthRef.current === 0 || isAtBottom) {
-        bottomRef.current?.scrollIntoView({ behavior: prevLengthRef.current === 0 ? "instant" : "smooth" });
+        container.scrollTo({ top: container.scrollHeight, behavior: prevLengthRef.current === 0 ? "instant" : "smooth" });
       }
     }
     prevLengthRef.current = messages.length;
@@ -136,7 +136,7 @@ export function MessageList({ channelId, conversationId, onReplyInThread, onRepl
   }
 
   return (
-    <div ref={containerRef} className="flex-1 overflow-y-auto p-4">
+    <div ref={containerRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4">
       {messages.map((message, i) => {
         const prev = i > 0 ? messages[i - 1] : null;
         const isGrouped =

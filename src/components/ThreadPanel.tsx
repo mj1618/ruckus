@@ -74,7 +74,7 @@ export function ThreadPanel({ parentMessageId, channelId, conversationId, contex
 
     if (isAtBottom || threadData.replies.length !== prevLengthRef.current) {
       if (prevLengthRef.current === 0 || isAtBottom) {
-        bottomRef.current?.scrollIntoView({ behavior: prevLengthRef.current === 0 ? "instant" : "smooth" });
+        container.scrollTo({ top: container.scrollHeight, behavior: prevLengthRef.current === 0 ? "instant" : "smooth" });
       }
     }
     prevLengthRef.current = threadData.replies.length;
@@ -125,7 +125,7 @@ export function ThreadPanel({ parentMessageId, channelId, conversationId, contex
       </div>
 
       {/* Scrollable content */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto">
+      <div ref={containerRef} className="flex-1 overflow-y-auto overflow-x-hidden">
         {/* Parent message - read-only display */}
         <div className="border-b border-border p-4">
           <div className="flex gap-3">
@@ -141,7 +141,7 @@ export function ThreadPanel({ parentMessageId, channelId, conversationId, contex
                 <span className="text-sm font-bold text-text">{parent.user.username}</span>
                 <span className="text-xs text-text-muted">{formatTimestamp(parent._creationTime)}</span>
               </div>
-              <div className="text-sm text-text-secondary [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+              <div className="text-sm text-text-secondary overflow-hidden break-words [overflow-wrap:anywhere] [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
                 <MessageText text={parent.text} />
                 {parent.editedAt && (
                   <span className="ml-1 inline text-xs text-text-muted">(edited)</span>
@@ -186,7 +186,7 @@ export function ThreadPanel({ parentMessageId, channelId, conversationId, contex
       </div>
 
       {/* Reply input */}
-      <div className="border-t border-border px-4 pb-4 pt-2">
+      <div className="min-w-0 border-t border-border px-4 pb-4 pt-2">
         <MessageInput
           channelId={channelId}
           channelName={channelId ? contextName : undefined}

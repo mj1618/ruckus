@@ -129,7 +129,7 @@ export function ChatLayout() {
   };
 
   return (
-    <div className="flex h-screen bg-elevated">
+    <div className="flex h-screen overflow-hidden bg-elevated">
       {/* Channel Sidebar - desktop always, mobile overlay */}
       <div
         className={`${
@@ -271,7 +271,7 @@ export function ChatLayout() {
                   />
                 </div>
                 {/* Fixed input on mobile */}
-                <div className="fixed bottom-0 left-0 right-0 z-20 bg-elevated px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 md:relative md:z-auto md:pb-4 md:pt-0">
+                <div className="fixed bottom-0 left-0 right-0 z-20 overflow-hidden bg-elevated px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 md:relative md:z-auto md:pb-4 md:pt-0">
                   <TypingIndicator channelId={activeChannel._id} />
                   <MessageInput
                     channelId={activeChannel._id}
@@ -335,7 +335,7 @@ export function ChatLayout() {
                 />
               </div>
               {/* Fixed input on mobile for DMs */}
-              <div className="fixed bottom-0 left-0 right-0 z-20 bg-elevated px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 md:relative md:z-auto md:pb-4 md:pt-0">
+              <div className="fixed bottom-0 left-0 right-0 z-20 overflow-hidden bg-elevated px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 md:relative md:z-auto md:pb-4 md:pt-0">
                 <TypingIndicator conversationId={activeConversation._id} />
                 <MessageInput
                   conversationId={activeConversation._id}

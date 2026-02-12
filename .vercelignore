@@ -1,0 +1,5 @@
+recordings/
+.playwright-cli/
+swarm/outputs/
+examples/
+.git/
