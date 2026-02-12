@@ -15,6 +15,13 @@ export function ChannelSidebar({ activeChannelId, onSelectChannel }: ChannelSide
   const { user } = useUser();
   const channels = useQuery(api.channels.listChannels);
   const createChannel = useMutation(api.channels.createChannel);
+  const unreadCounts = useQuery(
+    api.channelReads.getUnreadCounts,
+    user ? { userId: user._id } : "skip"
+  );
+  const unreadMap = new Map(
+    unreadCounts?.map((c) => [c.channelId, c.unreadCount])
+  );
 
   const [isCreating, setIsCreating] = useState(false);
   const [newChannelName, setNewChannelName] = useState("");
@@ -45,19 +52,29 @@ export function ChannelSidebar({ activeChannelId, onSelectChannel }: ChannelSide
 
       {/* Channel list */}
       <div className="flex-1 overflow-y-auto px-2 py-2">
-        {channels?.map((channel) => (
-          <button
-            key={channel._id}
-            onClick={() => onSelectChannel(channel._id)}
-            className={`w-full rounded px-3 py-1.5 text-left text-sm transition-colors ${
-              channel._id === activeChannelId
-                ? "bg-zinc-700/50 text-white"
-                : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300"
-            }`}
-          >
-            # {channel.name}
-          </button>
-        ))}
+        {channels?.map((channel) => {
+          const unreadCount = unreadMap.get(channel._id) ?? 0;
+          return (
+            <button
+              key={channel._id}
+              onClick={() => onSelectChannel(channel._id)}
+              className={`w-full rounded px-3 py-1.5 text-left text-sm transition-colors flex items-center justify-between ${
+                channel._id === activeChannelId
+                  ? "bg-zinc-700/50 text-white"
+                  : unreadCount > 0
+                    ? "text-zinc-100 font-semibold hover:bg-zinc-800"
+                    : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300"
+              }`}
+            >
+              <span># {channel.name}</span>
+              {unreadCount > 0 && channel._id !== activeChannelId && (
+                <span className="bg-indigo-500 text-white text-xs font-medium px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
 
         {/* Create channel */}
         {isCreating ? (

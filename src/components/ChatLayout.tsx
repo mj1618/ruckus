@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
+import { useUser } from "@/components/UserContext";
 import { ChannelSidebar } from "@/components/ChannelSidebar";
 import { ChannelHeader } from "@/components/ChannelHeader";
 import { MessageList } from "@/components/MessageList";
@@ -15,7 +16,9 @@ export function ChatLayout() {
   const [activeChannelId, setActiveChannelId] = useState<Id<"channels"> | null>(null);
   const [mobileView, setMobileView] = useState<"sidebar" | "chat" | "users">("chat");
 
+  const { user } = useUser();
   const channels = useQuery(api.channels.listChannels);
+  const markRead = useMutation(api.channelReads.markChannelRead);
 
   // Default to #general once channels load
   useEffect(() => {
@@ -24,6 +27,13 @@ export function ChatLayout() {
       setActiveChannelId(general ? general._id : channels[0]._id);
     }
   }, [channels, activeChannelId]);
+
+  // Mark channel as read when switching channels
+  useEffect(() => {
+    if (activeChannelId && user) {
+      markRead({ userId: user._id, channelId: activeChannelId });
+    }
+  }, [activeChannelId, user]);
 
   const activeChannel = channels?.find((c) => c._id === activeChannelId) ?? null;
 

@@ -31,6 +31,14 @@ const schema = defineSchema({
     userId: v.id("users"),
     expiresAt: v.number(),
   }).index("by_channelId", ["channelId"]),
+
+  channelReads: defineTable({
+    userId: v.id("users"),
+    channelId: v.id("channels"),
+    lastReadTime: v.number(),
+  })
+    .index("by_user_channel", ["userId", "channelId"])
+    .index("by_user", ["userId"]),
 });
 
 export default schema;

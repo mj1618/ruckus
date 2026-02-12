@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
+import { useUser } from "@/components/UserContext";
 import { MessageItem } from "@/components/MessageItem";
 
 interface MessageListProps {
@@ -12,6 +13,8 @@ interface MessageListProps {
 
 export function MessageList({ channelId }: MessageListProps) {
   const messages = useQuery(api.messages.getMessages, { channelId });
+  const { user } = useUser();
+  const markRead = useMutation(api.channelReads.markChannelRead);
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const prevLengthRef = useRef(0);
@@ -30,6 +33,11 @@ export function MessageList({ channelId }: MessageListProps) {
       }
     }
     prevLengthRef.current = messages.length;
+
+    // Mark channel as read when new messages arrive and user is near the bottom
+    if (user && isAtBottom) {
+      markRead({ userId: user._id, channelId });
+    }
   }, [messages]);
 
   if (messages === undefined) {
