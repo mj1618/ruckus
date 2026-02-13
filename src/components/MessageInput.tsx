@@ -90,7 +90,7 @@ export function MessageInput({ channelId, channelName, conversationId, conversat
   const clearTyping = useMutation(api.typing.clearTyping);
   const searchGifsAction = useAction(api.giphy.searchGifs);
 
-  const onlineUsers = useQuery(api.users.getOnlineUsers);
+  const channelUsers = useQuery(api.users.getChannelUsers, { channelId });
   const [showGifPicker, setShowGifPicker] = useState(false);
 
   // Handle files dropped from parent (drag-and-drop zone)
@@ -389,7 +389,7 @@ export function MessageInput({ channelId, channelName, conversationId, conversat
     }
 
     if (mentionState) {
-      const filtered = (onlineUsers ?? [])
+      const filtered = (channelUsers ?? [])
         .filter((u) => u.username.toLowerCase().startsWith(mentionState.query.toLowerCase()))
         .sort((a, b) => a.username.localeCompare(b.username))
         .slice(0, 8);
@@ -484,7 +484,7 @@ export function MessageInput({ channelId, channelName, conversationId, conversat
   const showCharCount = text.length > 3800;
 
   return (
-    <div className="relative min-w-0 overflow-hidden">
+    <div className="relative min-w-0">
       {slashState && (
         <SlashCommandHint
           query={slashState.query}
@@ -492,13 +492,12 @@ export function MessageInput({ channelId, channelName, conversationId, conversat
           onSelect={handleSlashSelect}
         />
       )}
-      {mentionState && onlineUsers && (
+      {mentionState && channelUsers && (
         <MentionAutocomplete
           query={mentionState.query}
-          users={onlineUsers}
+          users={channelUsers}
           selectedIndex={mentionState.selectedIndex}
           onSelect={handleMentionSelect}
-          position={{ bottom: 48, left: 0 }}
         />
       )}
       {/* File previews */}

@@ -256,13 +256,46 @@ export function UserSettingsModal({ user, onClose }: UserSettingsModalProps) {
 
   return (
     <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 z-50 bg-black/50" onClick={onClose} />
+      {/* Backdrop - hidden on mobile since modal is fullscreen */}
+      <div className="fixed inset-0 z-50 hidden bg-black/50 md:block" onClick={onClose} />
 
-      {/* Modal */}
-      <div className="fixed left-1/2 top-1/2 z-50 flex h-[600px] w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
-        {/* Sidebar */}
-        <div className="flex w-48 flex-col border-r border-border bg-elevated">
+      {/* Modal - fullscreen on mobile, centered card on desktop */}
+      <div className="fixed inset-0 z-50 flex flex-col bg-surface md:inset-auto md:left-1/2 md:top-1/2 md:h-[600px] md:w-full md:max-w-2xl md:-translate-x-1/2 md:-translate-y-1/2 md:flex-row md:overflow-hidden md:rounded-xl md:border md:border-border md:shadow-2xl">
+        {/* Mobile header */}
+        <div className="flex items-center justify-between border-b border-border px-4 py-3 md:hidden">
+          <h2 className="text-lg font-bold text-text">Settings</h2>
+          <button
+            type="button"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-text-muted hover:bg-hover hover:text-text"
+            onClick={onClose}
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Mobile tab bar - horizontal scroll */}
+        <div className="flex gap-1 border-b border-border px-3 py-2 md:hidden">
+          {menuItems.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                activeTab === item.id
+                  ? "bg-selected text-text"
+                  : "text-text-muted hover:bg-hover hover:text-text-secondary"
+              }`}
+              onClick={() => setActiveTab(item.id)}
+            >
+              {item.icon}
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Desktop sidebar - hidden on mobile */}
+        <div className="hidden w-48 flex-col border-r border-border bg-elevated md:flex">
           <div className="p-4">
             <h2 className="text-lg font-bold text-text">Settings</h2>
           </div>
@@ -286,9 +319,9 @@ export function UserSettingsModal({ user, onClose }: UserSettingsModalProps) {
         </div>
 
         {/* Content */}
-        <div className="flex flex-1 flex-col">
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-border px-6 py-4">
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {/* Desktop header - hidden on mobile */}
+          <div className="hidden items-center justify-between border-b border-border px-6 py-4 md:flex">
             <h3 className="text-lg font-semibold text-text">
               {menuItems.find((m) => m.id === activeTab)?.label}
             </h3>
@@ -304,7 +337,7 @@ export function UserSettingsModal({ user, onClose }: UserSettingsModalProps) {
           </div>
 
           {/* Tab Content */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:p-6 md:pb-6">
             {activeTab === "profile" && (
               <div className="space-y-6">
                 {/* Avatar */}
@@ -385,7 +418,7 @@ export function UserSettingsModal({ user, onClose }: UserSettingsModalProps) {
                         {statusEmoji || "😀"}
                       </button>
                       {showEmojiPicker && (
-                        <div className="absolute bottom-full left-0 z-10 mb-1">
+                        <div className="absolute left-0 top-full z-10 mt-1 md:bottom-full md:top-auto md:mb-1 md:mt-0">
                           <EmojiPicker
                             onSelect={(e) => {
                               statusDirty.current = true;
@@ -459,7 +492,7 @@ export function UserSettingsModal({ user, onClose }: UserSettingsModalProps) {
             {activeTab === "appearance" && (
               <div>
                 <div className="mb-3 text-sm font-semibold text-text-muted">Theme</div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-3">
                   {THEMES.map((t) => (
                     <button
                       key={t.id}

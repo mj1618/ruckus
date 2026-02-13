@@ -3,9 +3,10 @@ services:
     build: .
     container_name: ruckus-ai-bot
     environment:
-      - NODE_ENV=development
-      - CONVEX_URL=https://chatty-snake-456.convex.cloud
+      - NODE_ENV=production
+      - CONVEX_URL=https://fast-wolverine-841.convex.cloud
       - CLAUDE_CODE_OAUTH_TOKEN
+      - ANTHROPIC_API_KEY
     volumes:
       # Persist bot credentials
       - ./.bot-credentials.json:/app/.bot-credentials.json

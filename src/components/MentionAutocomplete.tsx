@@ -15,10 +15,9 @@ interface MentionAutocompleteProps {
   users: MentionUser[];
   selectedIndex: number;
   onSelect: (username: string) => void;
-  position: { bottom: number; left: number };
 }
 
-export function MentionAutocomplete({ query, users, selectedIndex, onSelect, position }: MentionAutocompleteProps) {
+export function MentionAutocomplete({ query, users, selectedIndex, onSelect }: MentionAutocompleteProps) {
   const filtered = users
     .filter((u) => u.username.toLowerCase().startsWith(query.toLowerCase()))
     .sort((a, b) => a.username.localeCompare(b.username))
@@ -26,20 +25,14 @@ export function MentionAutocomplete({ query, users, selectedIndex, onSelect, pos
 
   if (filtered.length === 0) {
     return (
-      <div
-        className="absolute z-50 min-w-[200px] rounded-lg border border-border bg-overlay p-2 shadow-xl"
-        style={{ bottom: position.bottom, left: position.left }}
-      >
+      <div className="absolute bottom-full left-0 z-50 mb-1 min-w-[200px] rounded-lg border border-border bg-overlay p-2 shadow-xl">
         <p className="text-sm italic text-text-muted">No matching users</p>
       </div>
     );
   }
 
   return (
-    <div
-      className="absolute z-50 max-h-[200px] min-w-[200px] max-w-[280px] overflow-y-auto rounded-lg border border-border bg-overlay py-1 shadow-xl"
-      style={{ bottom: position.bottom, left: position.left }}
-    >
+    <div className="absolute bottom-full left-0 z-50 mb-1 max-h-[200px] min-w-[200px] max-w-[280px] overflow-y-auto rounded-lg border border-border bg-overlay py-1 shadow-xl">
       {filtered.map((user, i) => (
         <button
           key={user._id}
