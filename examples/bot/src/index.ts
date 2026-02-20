@@ -471,8 +471,8 @@ interface BotInfo {
 
 interface Mention {
   messageId: Id<"messages">;
-  channelId: Id<"channels">;
-  channelName: string;
+  channelId?: Id<"channels">;  // Optional - undefined for DM mentions
+  channelName?: string;        // Optional - undefined for DM mentions
   text: string;
   senderId: Id<"users">;
   senderUsername: string;
@@ -493,7 +493,7 @@ interface DirectMessage {
 interface Channel {
   channelId: Id<"channels">;
   name: string;
-  topic: string | null;
+  topic?: string;
 }
 
 interface Conversation {
@@ -688,6 +688,11 @@ class RuckusBot {
    */
   private async handleMentions(mentions: Mention[]): Promise<void> {
     for (const mention of mentions) {
+      // Skip DM mentions - they're handled by pollForDMs instead
+      if (!mention.channelId || !mention.channelName) {
+        continue;
+      }
+
       // Skip if already processed or too old
       if (
         mention.createdAt <= this.lastSeenTimestamp ||
@@ -757,22 +762,32 @@ class RuckusBot {
 
   /**
    * Respond to a mention using Claude CLI with streaming
+   * Note: This method expects channel mentions only (not DM mentions)
    */
   private async respondToMention(mention: Mention): Promise<void> {
+    // Type guard: ensure this is a channel mention (not a DM)
+    if (!mention.channelId || !mention.channelName) {
+      console.error("   ⚠️  Skipping DM mention - use pollForDMs instead");
+      return;
+    }
+
+    const channelId = mention.channelId;
+    const channelName = mention.channelName;
+
     // Log the incoming message to chat history
     appendToChatLog(
       "RECEIVED",
-      mention.channelName,
+      channelName,
       mention.senderUsername,
       mention.text
     );
 
     // Show typing indicator while waiting for response
-    await this.setTyping(mention.channelId);
+    await this.setTyping(channelId);
 
     // Keep typing indicator alive with periodic refresh
     const typingInterval = setInterval(() => {
-      this.setTyping(mention.channelId).catch(() => { });
+      this.setTyping(channelId).catch(() => { });
     }, 3000);
 
     try {
@@ -791,7 +806,7 @@ class RuckusBot {
       const response = await generateAIResponseStreaming(
         mention.senderUsername,
         messageText,
-        mention.channelName,
+        channelName,
         async (text: string, isDone: boolean) => {
           // Only create/update message once we have enough text or we're done
           if (text.length >= MIN_TEXT_LENGTH || isDone) {
@@ -803,10 +818,10 @@ class RuckusBot {
 
               // Create the message for the first time
               clearInterval(typingInterval);
-              await this.clearTyping(mention.channelId).catch(() => { });
+              await this.clearTyping(channelId).catch(() => { });
 
               const result = await this.sendMessage(
-                mention.channelId,
+                channelId,
                 displayText,
                 mention.messageId
               );
@@ -832,14 +847,14 @@ class RuckusBot {
       // Also check isCreatingMessage in case a creation is still in flight
       if (!messageId && !isCreatingMessage) {
         clearInterval(typingInterval);
-        await this.clearTyping(mention.channelId).catch(() => { });
-        await this.sendMessage(mention.channelId, response, mention.messageId);
+        await this.clearTyping(channelId).catch(() => { });
+        await this.sendMessage(channelId, response, mention.messageId);
       }
 
       // Log the outgoing response to chat history
       appendToChatLog(
         "SENT",
-        mention.channelName,
+        channelName,
         this.botInfo!.username,
         response
       );
@@ -848,7 +863,7 @@ class RuckusBot {
     } catch (error) {
       clearInterval(typingInterval);
       console.error(`   ❌ Error responding:`, error);
-      await this.clearTyping(mention.channelId).catch(() => { });
+      await this.clearTyping(channelId).catch(() => { });
       throw error;
     }
   }
@@ -1032,13 +1047,6 @@ class RuckusBot {
       apiKey: this.apiKey,
       conversationId,
     });
-  }
-
-  /**
-   * Helper to sleep for a given number of milliseconds
-   */
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
