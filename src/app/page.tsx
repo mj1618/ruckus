@@ -4,7 +4,7 @@ import { UserProvider, useUser } from "@/components/UserContext";
 import { JoinScreen } from "@/components/JoinScreen";
 import { ChatLayout } from "@/components/ChatLayout";
 
-const PAUSED = true;
+const PAUSED = false;
 
 function PausedPage() {
   return (
